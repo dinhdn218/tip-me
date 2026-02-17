@@ -112,6 +112,50 @@ export default function Home() {
     }
   };
 
+  const markAllPaidForPerson = async (personName: string) => {
+    setIsLoading(true);
+    try {
+      // Find all activities where this person hasn't paid
+      const activitiesToUpdate = activities.filter(activity => 
+        activity.participants.some(p => p.name === personName && !p.paid)
+      );
+
+      // Update each activity
+      for (const activity of activitiesToUpdate) {
+        const updatedActivity = {
+          ...activity,
+          participants: activity.participants.map(p =>
+            p.name === personName ? { ...p, paid: true } : p
+          ),
+        };
+        await firebaseService.updateActivity(activity.id, updatedActivity);
+      }
+
+      toast.success(`✅ Đã đánh dấu tất cả khoản nợ của ${personName} là đã thanh toán!`);
+    } catch (error) {
+      console.error('Error marking all paid:', error);
+      toast.error('Lỗi khi cập nhật. Vui lòng thử lại!');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteAllActivities = async () => {
+    setIsLoading(true);
+    try {
+      // Delete all activities
+      for (const activity of activities) {
+        await firebaseService.deleteActivity(activity.id);
+      }
+      toast.success('🗑️ Đã xóa tất cả hoạt động!');
+    } catch (error) {
+      console.error('Error deleting all activities:', error);
+      toast.error('Lỗi khi xóa. Vui lòng thử lại!');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const updatePaymentQR = async (qr: PaymentQR) => {
     setIsLoading(true);
     try {
@@ -253,41 +297,41 @@ export default function Home() {
         />
       )}
 
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50 to-fuchsia-50 dark:from-gray-950 dark:via-slate-900 dark:to-gray-900">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         {/* Top Header */}
-        <header className="fixed top-0 left-0 right-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 shadow-lg">
+        <header className="fixed top-0 left-0 right-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
           <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16 sm:h-20">
+            <div className="flex items-center justify-between h-16">
               {/* Logo & Brand */}
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-violet-600 via-fuchsia-600 to-violet-600 rounded-2xl shadow-lg">
-                  <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 bg-violet-600 rounded-lg">
+                  <Wallet className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg sm:text-xl lg:text-2xl font-black bg-gradient-to-r from-violet-600 via-fuchsia-600 to-violet-600 bg-clip-text text-transparent tracking-tight">
+                  <h1 className="text-lg font-bold text-gray-900 dark:text-white">
                     Chia Tiền Nhóm
                   </h1>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold tracking-tight hidden sm:block">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
                     Quản lý chi phí thông minh
                   </p>
                 </div>
               </div>
 
               {/* Right Actions */}
-              <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-2">
                 {/* Connection Status */}
-                <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800">
                   {isConnected ? (
                     <>
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <Wifi className="w-4 h-4 text-green-500" />
-                      <span className="text-xs font-bold text-green-600 dark:text-green-400">Online</span>
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <Wifi className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      <span className="text-xs font-semibold text-green-600 dark:text-green-400">Online</span>
                     </>
                   ) : (
                     <>
                       <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      <WifiOff className="w-4 h-4 text-red-500" />
-                      <span className="text-xs font-bold text-red-600 dark:text-red-400">Offline</span>
+                      <WifiOff className="w-4 h-4 text-red-600 dark:text-red-400" />
+                      <span className="text-xs font-semibold text-red-600 dark:text-red-400">Offline</span>
                     </>
                   )}
                 </div>
@@ -298,16 +342,16 @@ export default function Home() {
                 </div>
 
                 {/* User Badge */}
-                <div className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-600 text-white">
                   {isAdmin ? (
                     <>
                       <Shield className="w-4 h-4" />
-                      <span className="text-xs sm:text-sm font-black tracking-tight hidden sm:inline">{adminName}</span>
+                      <span className="text-sm font-semibold hidden sm:inline">{adminName}</span>
                     </>
                   ) : (
                     <>
                       <Eye className="w-4 h-4" />
-                      <span className="text-xs sm:text-sm font-black tracking-tight hidden sm:inline">Xem</span>
+                      <span className="text-sm font-semibold hidden sm:inline">Xem</span>
                     </>
                   )}
                 </div>
@@ -315,11 +359,11 @@ export default function Home() {
                 {/* Logout Button */}
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-red-300 dark:hover:border-red-700 transition-all hover:scale-105 shadow-md group"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors group"
                   title="Đăng xuất"
                 >
-                  <LogOut className="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:text-red-500" />
-                  <span className="hidden lg:inline text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-red-500 tracking-tight">Thoát</span>
+                  <LogOut className="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400" />
+                  <span className="hidden lg:inline text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400">Thoát</span>
                 </button>
               </div>
             </div>
@@ -327,45 +371,45 @@ export default function Home() {
         </header>
 
         {/* Desktop Sidebar Navigation */}
-        <aside className="hidden lg:block fixed left-0 top-20 bottom-0 w-72 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 overflow-y-auto z-30">
-          <nav className="p-6 space-y-2">
+        <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 overflow-y-auto z-30">
+          <nav className="p-4 space-y-1">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`group flex items-center gap-4 px-5 py-4 rounded-2xl font-bold text-base transition-all duration-300 w-full ${
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-colors w-full ${
                 activeTab === 'overview'
-                  ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-xl shadow-violet-500/50 scale-105'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:scale-105'
+                  ? 'bg-violet-600 text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
               }`}
             >
-              <HomeIcon className={`w-6 h-6 ${activeTab === 'overview' ? '' : 'text-violet-600 dark:text-violet-400'}`} />
-              <span className="tracking-tight">Tổng quan</span>
+              <HomeIcon className="w-5 h-5" />
+              <span>Tổng quan</span>
             </button>
             
             {isAdmin && (
               <button
                 onClick={() => setActiveTab('add')}
-                className={`group flex items-center gap-4 px-5 py-4 rounded-2xl font-bold text-base transition-all duration-300 w-full ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-colors w-full ${
                   activeTab === 'add'
-                    ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-xl shadow-violet-500/50 scale-105'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:scale-105'
+                    ? 'bg-violet-600 text-white'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
-                <Plus className={`w-6 h-6 transition-transform group-hover:rotate-90 ${activeTab === 'add' ? '' : 'text-violet-600 dark:text-violet-400'}`} />
-                <span className="tracking-tight">Thêm mới</span>
+                <Plus className="w-5 h-5" />
+                <span>Thêm mới</span>
               </button>
             )}
             
             <button
               onClick={() => setActiveTab('list')}
-              className={`group flex items-center gap-4 px-5 py-4 rounded-2xl font-bold text-base transition-all duration-300 w-full ${
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-colors w-full ${
                 activeTab === 'list'
-                  ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-xl shadow-violet-500/50 scale-105'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:scale-105'
+                  ? 'bg-violet-600 text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
               }`}
             >
-              <List className={`w-6 h-6 ${activeTab === 'list' ? '' : 'text-violet-600 dark:text-violet-400'}`} />
-              <span className="flex-1 text-left tracking-tight">Hoạt động</span>
-              <span className={`px-3 py-1 rounded-full text-sm font-black ${
+              <List className="w-5 h-5" />
+              <span className="flex-1 text-left">Hoạt động</span>
+              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
                 activeTab === 'list' ? 'bg-white/20' : 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300'
               }`}>
                 {activities.length}
@@ -374,73 +418,71 @@ export default function Home() {
             
             <button
               onClick={() => setActiveTab('summary')}
-              className={`group flex items-center gap-4 px-5 py-4 rounded-2xl font-bold text-base transition-all duration-300 w-full ${
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-colors w-full ${
                 activeTab === 'summary'
-                  ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-xl shadow-violet-500/50 scale-105'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:scale-105'
+                  ? 'bg-violet-600 text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
               }`}
             >
-              <BarChart3 className={`w-6 h-6 ${activeTab === 'summary' ? '' : 'text-violet-600 dark:text-violet-400'}`} />
-              <span className="tracking-tight">Công nợ</span>
+              <BarChart3 className="w-5 h-5" />
+              <span>Công nợ</span>
             </button>
             
-            {isAdmin && (
-              <button
-                onClick={() => setActiveTab('qr')}
-                className={`group flex items-center gap-4 px-5 py-4 rounded-2xl font-bold text-base transition-all duration-300 w-full ${
-                  activeTab === 'qr'
-                    ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-xl shadow-violet-500/50 scale-105'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:scale-105'
-                }`}
-              >
-                <QrCode className={`w-6 h-6 ${activeTab === 'qr' ? '' : 'text-violet-600 dark:text-violet-400'}`} />
-                <span className="tracking-tight">QR Code</span>
-              </button>
-            )}
+            <button
+              onClick={() => setActiveTab('qr')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-colors w-full ${
+                activeTab === 'qr'
+                  ? 'bg-violet-600 text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              }`}
+            >
+              <QrCode className="w-5 h-5" />
+              <span>QR Code</span>
+            </button>
           </nav>
         </aside>
 
         {/* Bottom Mobile Navigation */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 shadow-2xl">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-around px-2 py-2">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`flex flex-col items-center gap-1 py-3 px-4 rounded-2xl font-bold text-xs transition-all ${
+              className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg font-medium text-xs transition-colors ${
                 activeTab === 'overview'
                   ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
                   : 'text-gray-600 dark:text-gray-400'
               }`}
             >
-              <HomeIcon className="w-6 h-6" />
-              <span className="tracking-tight">Tổng quan</span>
+              <HomeIcon className="w-5 h-5" />
+              <span>Tổng quan</span>
             </button>
             
             {isAdmin && (
               <button
                 onClick={() => setActiveTab('add')}
-                className={`flex flex-col items-center gap-1 py-3 px-4 rounded-2xl font-bold text-xs transition-all ${
+                className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg font-medium text-xs transition-colors ${
                   activeTab === 'add'
                     ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
                     : 'text-gray-600 dark:text-gray-400'
                 }`}
               >
-                <Plus className="w-6 h-6" />
-                <span className="tracking-tight">Thêm</span>
+                <Plus className="w-5 h-5" />
+                <span>Thêm</span>
               </button>
             )}
             
             <button
               onClick={() => setActiveTab('list')}
-              className={`relative flex flex-col items-center gap-1 py-3 px-4 rounded-2xl font-bold text-xs transition-all ${
+              className={`relative flex flex-col items-center gap-1 py-2 px-3 rounded-lg font-medium text-xs transition-colors ${
                 activeTab === 'list'
                   ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
                   : 'text-gray-600 dark:text-gray-400'
               }`}
             >
-              <List className="w-6 h-6" />
-              <span className="tracking-tight">Danh sách</span>
+              <List className="w-5 h-5" />
+              <span>Danh sách</span>
               {activities.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-red-500 to-rose-500 text-white text-xs rounded-full flex items-center justify-center font-black shadow-lg">
+                <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-red-600 text-white text-xs rounded-full flex items-center justify-center font-semibold">
                   {activities.length}
                 </span>
               )}
@@ -448,56 +490,54 @@ export default function Home() {
             
             <button
               onClick={() => setActiveTab('summary')}
-              className={`flex flex-col items-center gap-1 py-3 px-4 rounded-2xl font-bold text-xs transition-all ${
+              className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg font-medium text-xs transition-colors ${
                 activeTab === 'summary'
                   ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
                   : 'text-gray-600 dark:text-gray-400'
               }`}
             >
-              <BarChart3 className="w-6 h-6" />
-              <span className="tracking-tight">Công nợ</span>
+              <BarChart3 className="w-5 h-5" />
+              <span>Công nợ</span>
             </button>
             
-            {isAdmin && (
-              <button
-                onClick={() => setActiveTab('qr')}
-                className={`flex flex-col items-center gap-1 py-3 px-4 rounded-2xl font-bold text-xs transition-all ${
-                  activeTab === 'qr'
-                    ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
-                    : 'text-gray-600 dark:text-gray-400'
-                }`}
-              >
-                <QrCode className="w-6 h-6" />
-                <span className="tracking-tight">QR</span>
-              </button>
-            )}
+            <button
+              onClick={() => setActiveTab('qr')}
+              className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg font-medium text-xs transition-colors ${
+                activeTab === 'qr'
+                  ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
+                  : 'text-gray-600 dark:text-gray-400'
+              }`}
+            >
+              <QrCode className="w-5 h-5" />
+              <span>QR</span>
+            </button>
           </div>
         </nav>
 
         {/* Main Content */}
-        <main className="pt-20 pb-20 lg:pb-8 lg:pl-72 min-h-screen">
-          <div className="mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-            <div className="lg:min-h-[calc(100vh-11rem)] bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 transition-all duration-300 overflow-hidden">
+        <main className="pt-16 pb-20 lg:pb-8 lg:pl-64 min-h-screen">
+          <div className="mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="lg:min-h-[calc(100vh-8rem)] bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
               {activeTab === 'overview' && (
-                <div className="p-6 sm:p-8 lg:p-10">
-                  <div className="mb-8">
-                    <h2 className="text-3xl sm:text-4xl font-black text-gray-800 dark:text-white mb-2 tracking-tight">
+                <div className="p-6">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                       Tổng quan
                     </h2>
-                    <p className="text-gray-600 dark:text-gray-400 font-semibold">Xem thống kê và báo cáo tổng hợp</p>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm">Xem thống kê và báo cáo tổng hợp</p>
                   </div>
                   <Overview activities={activities} />
                 </div>
               )}
               
               {activeTab === 'add' && isAdmin && (
-                <div className="p-6 sm:p-8 lg:p-10">
+                <div className="p-6">
                   <div className="max-w-3xl mx-auto">
-                    <div className="mb-8">
-                      <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent mb-2 tracking-tight">
+                    <div className="mb-6">
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                         Thêm hoạt động mới
                       </h2>
-                      <p className="text-gray-600 dark:text-gray-400 font-semibold">Điền thông tin chi tiết về hoạt động chi tiêu</p>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm">Điền thông tin chi tiết về hoạt động chi tiêu</p>
                     </div>
                     <AddActivity onAdd={addActivity} existingParticipants={getAllParticipants()} />
                   </div>
@@ -505,9 +545,9 @@ export default function Home() {
               )}
               
               {activeTab === 'list' && (
-                <div className="p-6 sm:p-8 lg:p-10">
-                  <div className="mb-8">
-                    <h2 className="text-3xl sm:text-4xl font-black text-gray-800 dark:text-white mb-4 tracking-tight">Danh sách hoạt động</h2>
+                <div className="p-6">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Danh sách hoạt động</h2>
                     <SearchFilter
                       activities={activities}
                       onFilteredResults={setFilteredActivities}
@@ -517,6 +557,7 @@ export default function Home() {
                     activities={filteredActivities}
                     onUpdate={updateActivity}
                     onDelete={deleteActivity}
+                    onDeleteAll={deleteAllActivities}
                     paymentQR={paymentQR}
                     isAdmin={isAdmin}
                   />
@@ -524,27 +565,29 @@ export default function Home() {
               )}
               
               {activeTab === 'summary' && (
-                <div className="p-6 sm:p-8 lg:p-10">
-                  <div className="mb-8">
-                    <h2 className="text-3xl sm:text-4xl font-black text-gray-800 dark:text-white mb-2 tracking-tight">
+                <div className="p-6">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                       Báo cáo công nợ
                     </h2>
-                    <p className="text-gray-600 dark:text-gray-400 font-semibold">Theo dõi chi tiết các khoản phải thu</p>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm">Theo dõi chi tiết các khoản phải thu</p>
                   </div>
-                  <DebtSummary activities={activities} />
+                  <DebtSummary activities={activities} onMarkAllPaid={markAllPaidForPerson} isAdmin={isAdmin} />
                 </div>
               )}
               
-              {activeTab === 'qr' && isAdmin && (
-                <div className="p-6 sm:p-8 lg:p-10">
+              {activeTab === 'qr' && (
+                <div className="p-6">
                   <div className="max-w-2xl mx-auto">
-                    <div className="mb-8">
-                      <h2 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent mb-2 tracking-tight">
-                        Quản lý QR Code
+                    <div className="mb-6">
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                        {isAdmin ? 'Quản lý QR Code' : 'Thông tin thanh toán'}
                       </h2>
-                      <p className="text-gray-600 dark:text-gray-400 font-semibold">Cập nhật thông tin thanh toán</p>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm">
+                        {isAdmin ? 'Cập nhật thông tin thanh toán' : 'Xem thông tin chuyển khoản'}
+                      </p>
                     </div>
-                    <QRCodeManager paymentQR={paymentQR} onUpdate={updatePaymentQR} />
+                    <QRCodeManager paymentQR={paymentQR} onUpdate={updatePaymentQR} isAdmin={isAdmin} />
                   </div>
                 </div>
               )}

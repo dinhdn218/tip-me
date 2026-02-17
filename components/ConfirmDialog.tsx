@@ -9,7 +9,7 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   confirmText?: string;
   cancelText?: string;
-  type?: 'danger' | 'warning' | 'info';
+  type?: 'danger' | 'warning' | 'info' | 'success';
 }
 
 export default function ConfirmDialog({
@@ -22,16 +22,17 @@ export default function ConfirmDialog({
   type = 'warning',
 }: ConfirmDialogProps) {
   const colors = {
-    danger: 'from-red-500 to-red-600',
-    warning: 'from-orange-500 to-orange-600',
-    info: 'from-blue-500 to-blue-600',
+    danger: 'bg-red-600',
+    warning: 'bg-orange-600',
+    info: 'bg-blue-600',
+    success: 'bg-green-600',
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
         {/* Header */}
-        <div className={`bg-gradient-to-r ${colors[type]} p-6 rounded-t-2xl flex items-center justify-between`}>
+        <div className={`${colors[type]} p-6 rounded-t-2xl flex items-center justify-between`}>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
               <AlertTriangle className="w-6 h-6 text-white" />
@@ -57,13 +58,13 @@ export default function ConfirmDialog({
         <div className="px-6 pb-6 flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105"
+            className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-semibold rounded-xl transition-colors"
           >
             {cancelText}
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-1 px-6 py-3 bg-gradient-to-r ${colors[type]} text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 shadow-lg`}
+            className={`flex-1 px-6 py-3 ${colors[type]} hover:opacity-90 text-white font-semibold rounded-xl transition-all`}
           >
             {confirmText}
           </button>
