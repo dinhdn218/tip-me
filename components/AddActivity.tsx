@@ -230,11 +230,11 @@ export default function AddActivity({ onAdd, existingParticipants }: AddActivity
       </div>
 
       {participants.length > 0 && totalAmount && (
-        <div className="p-4 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-200 dark:border-violet-800">
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">
+        <div className="p-3 sm:p-4 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-200 dark:border-violet-800">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">
             Mỗi người sẽ trả:
           </p>
-          <p className="text-2xl font-bold text-violet-600 dark:text-violet-400">
+          <p className="text-xl sm:text-2xl font-bold text-violet-600 dark:text-violet-400 break-words">
             {(parseFloat(totalAmount) / participants.length).toLocaleString('vi-VN')} VNĐ
           </p>
         </div>

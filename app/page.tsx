@@ -443,84 +443,86 @@ export default function Home() {
         </aside>
 
         {/* Bottom Mobile Navigation */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
-          <div className="flex items-center justify-around px-2 py-2">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 pb-safe">
+          <div className="flex items-center justify-around px-1 py-1.5 sm:py-2">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg font-medium text-xs transition-colors ${
+              className={`flex flex-1 flex-col items-center gap-0.5 py-1.5 px-1.5 sm:px-2 rounded-lg font-medium transition-all ${
                 activeTab === 'overview'
                   ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
                   : 'text-gray-600 dark:text-gray-400'
               }`}
             >
-              <HomeIcon className="w-5 h-5" />
-              <span>Tổng quan</span>
+              <HomeIcon className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+              <span className="text-[10px] sm:text-xs leading-none">Tổng quan</span>
             </button>
             
             {isAdmin && (
               <button
                 onClick={() => setActiveTab('add')}
-                className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg font-medium text-xs transition-colors ${
+                className={`flex flex-1 flex-col items-center gap-0.5 py-1.5 px-1.5 sm:px-2 rounded-lg font-medium transition-all ${
                   activeTab === 'add'
                     ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
                     : 'text-gray-600 dark:text-gray-400'
                 }`}
               >
-                <Plus className="w-5 h-5" />
-                <span>Thêm</span>
+                <Plus className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+                <span className="text-[10px] sm:text-xs leading-none">Thêm</span>
               </button>
             )}
             
             <button
               onClick={() => setActiveTab('list')}
-              className={`relative flex flex-col items-center gap-1 py-2 px-3 rounded-lg font-medium text-xs transition-colors ${
+              className={`relative flex flex-1 flex-col items-center gap-0.5 py-1.5 px-1.5 sm:px-2 rounded-lg font-medium transition-all ${
                 activeTab === 'list'
                   ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
                   : 'text-gray-600 dark:text-gray-400'
               }`}
             >
-              <List className="w-5 h-5" />
-              <span>Danh sách</span>
-              {activities.length > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-red-600 text-white text-xs rounded-full flex items-center justify-center font-semibold">
-                  {activities.length}
-                </span>
-              )}
+              <div className="relative">
+                <List className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+                {activities.length > 0 && (
+                  <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 bg-red-600 text-white text-[9px] sm:text-[10px] rounded-full flex items-center justify-center font-bold leading-none">
+                    {activities.length > 99 ? '99+' : activities.length}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] sm:text-xs leading-none">Danh sách</span>
             </button>
             
             <button
               onClick={() => setActiveTab('summary')}
-              className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg font-medium text-xs transition-colors ${
+              className={`flex flex-1 flex-col items-center gap-0.5 py-1.5 px-1.5 sm:px-2 rounded-lg font-medium transition-all ${
                 activeTab === 'summary'
                   ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
                   : 'text-gray-600 dark:text-gray-400'
               }`}
             >
-              <BarChart3 className="w-5 h-5" />
-              <span>Công nợ</span>
+              <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+              <span className="text-[10px] sm:text-xs leading-none">Công nợ</span>
             </button>
             
             <button
               onClick={() => setActiveTab('qr')}
-              className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg font-medium text-xs transition-colors ${
+              className={`flex flex-1 flex-col items-center gap-0.5 py-1.5 px-1.5 sm:px-2 rounded-lg font-medium transition-all ${
                 activeTab === 'qr'
                   ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
                   : 'text-gray-600 dark:text-gray-400'
               }`}
             >
-              <QrCode className="w-5 h-5" />
-              <span>QR</span>
+              <QrCode className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+              <span className="text-[10px] sm:text-xs leading-none">QR</span>
             </button>
           </div>
         </nav>
 
         {/* Main Content */}
-        <main className="pt-16 pb-20 lg:pb-8 lg:pl-64 min-h-screen">
-          <div className="mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="lg:min-h-[calc(100vh-8rem)] bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        <main className="pt-16 pb-20 lg:pb-0 lg:pl-64 min-h-screen">
+          <div className="mx-auto">
+            <div className="lg:min-h-[calc(100vh-4rem)] bg-white dark:bg-gray-800">
               {activeTab === 'overview' && (
-                <div className="p-6">
-                  <div className="mb-6">
+                <div className="p-4 sm:p-6">
+                  <div className="mb-4 sm:mb-6">
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                       Tổng quan
                     </h2>
@@ -531,9 +533,9 @@ export default function Home() {
               )}
               
               {activeTab === 'add' && isAdmin && (
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <div className="max-w-3xl mx-auto">
-                    <div className="mb-6">
+                    <div className="mb-4 sm:mb-6">
                       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                         Thêm hoạt động mới
                       </h2>
@@ -545,8 +547,8 @@ export default function Home() {
               )}
               
               {activeTab === 'list' && (
-                <div className="p-6">
-                  <div className="mb-6">
+                <div className="p-4 sm:p-6">
+                  <div className="mb-4 sm:mb-6">
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Danh sách hoạt động</h2>
                     <SearchFilter
                       activities={activities}
@@ -565,8 +567,8 @@ export default function Home() {
               )}
               
               {activeTab === 'summary' && (
-                <div className="p-6">
-                  <div className="mb-6">
+                <div className="p-4 sm:p-6">
+                  <div className="mb-4 sm:mb-6">
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                       Báo cáo công nợ
                     </h2>
@@ -577,9 +579,9 @@ export default function Home() {
               )}
               
               {activeTab === 'qr' && (
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <div className="max-w-2xl mx-auto">
-                    <div className="mb-6">
+                    <div className="mb-4 sm:mb-6">
                       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                         {isAdmin ? 'Quản lý QR Code' : 'Thông tin thanh toán'}
                       </h2>

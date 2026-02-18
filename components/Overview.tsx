@@ -27,37 +27,37 @@ export default function Overview({ activities }: OverviewProps) {
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 bg-blue-600 rounded-xl">
-          <div className="flex items-center gap-2 mb-2">
-            <Calendar className="w-5 h-5 text-blue-200" />
-            <p className="text-sm text-blue-100 font-medium">Tổng hoạt động</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="p-4 sm:p-5 bg-blue-600 rounded-xl">
+          <div className="flex items-center gap-2 mb-1 sm:mb-2">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-200" />
+            <p className="text-xs sm:text-sm text-blue-100 font-medium">Tổng hoạt động</p>
           </div>
-          <p className="text-3xl font-bold text-white">{totalActivities}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-white">{totalActivities}</p>
         </div>
 
-        <div className="p-5 bg-violet-600 rounded-xl">
-          <div className="flex items-center gap-2 mb-2">
-            <Users className="w-5 h-5 text-violet-200" />
-            <p className="text-sm text-violet-100 font-medium">Số người</p>
+        <div className="p-4 sm:p-5 bg-violet-600 rounded-xl">
+          <div className="flex items-center gap-2 mb-1 sm:mb-2">
+            <Users className="w-4 h-4 sm:w-5 sm:h-5 text-violet-200" />
+            <p className="text-xs sm:text-sm text-violet-100 font-medium">Số người</p>
           </div>
-          <p className="text-3xl font-bold text-white">{allParticipants.size}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-white">{allParticipants.size}</p>
         </div>
 
-        <div className="p-5 bg-orange-600 rounded-xl">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-5 h-5 text-orange-200" />
-            <p className="text-sm text-orange-100 font-medium">Tổng chi</p>
+        <div className="p-4 sm:p-5 bg-orange-600 rounded-xl">
+          <div className="flex items-center gap-2 mb-1 sm:mb-2">
+            <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-orange-200" />
+            <p className="text-xs sm:text-sm text-orange-100 font-medium">Tổng chi</p>
           </div>
-          <p className="text-2xl font-bold text-white">{totalSpent.toLocaleString('vi-VN')}đ</p>
+          <p className="text-lg sm:text-2xl font-bold text-white break-words">{totalSpent.toLocaleString('vi-VN')}đ</p>
         </div>
 
-        <div className="p-5 bg-green-600 rounded-xl">
-          <div className="flex items-center gap-2 mb-2">
-            <DollarSign className="w-5 h-5 text-green-200" />
-            <p className="text-sm text-green-100 font-medium">Đã thu</p>
+        <div className="p-4 sm:p-5 bg-green-600 rounded-xl">
+          <div className="flex items-center gap-2 mb-1 sm:mb-2">
+            <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-200" />
+            <p className="text-xs sm:text-sm text-green-100 font-medium">Đã thu</p>
           </div>
-          <p className="text-2xl font-bold text-white">{totalPaid.toLocaleString('vi-VN')}đ</p>
+          <p className="text-lg sm:text-2xl font-bold text-white break-words">{totalPaid.toLocaleString('vi-VN')}đ</p>
         </div>
       </div>
 

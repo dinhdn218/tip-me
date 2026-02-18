@@ -9,8 +9,18 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "Dự án nuôi tôi - Quản lý chi tiêu nhóm",
-  description: "Ứng dụng quản lý và chia tiền chi tiêu nhóm hiện đại",
+  title: "Chia Tiền Nhóm - Quản lý chi tiêu nhóm",
+  description: "Ứng dụng quản lý và chia tiền chi tiêu nhóm dễ dàng, minh bạch. Theo dõi chi phí, tính toán công nợ tự động.",
+  manifest: '/manifest.webmanifest',
+  themeColor: '#7C3AED',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+  },
 };
 
 export default function RootLayout({

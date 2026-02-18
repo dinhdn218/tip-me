@@ -80,31 +80,31 @@ export default function DebtSummary({ activities, onMarkAllPaid, isAdmin }: Debt
   return (
     <div className="space-y-6">
       {/* Overall Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 bg-blue-600 rounded-xl">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-5 h-5 text-blue-200" />
-            <p className="text-sm text-blue-100 font-medium">Tổng chi phí</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="p-4 sm:p-5 bg-blue-600 rounded-xl">
+          <div className="flex items-center gap-2 mb-1 sm:mb-2">
+            <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-200" />
+            <p className="text-xs sm:text-sm text-blue-100 font-medium">Tổng chi phí</p>
           </div>
-          <p className="text-2xl font-bold text-white">
+          <p className="text-xl sm:text-2xl font-bold text-white break-words">
             {totalDebt.toLocaleString('vi-VN')}đ
           </p>
         </div>
-        <div className="p-5 bg-green-600 rounded-xl">
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle className="w-5 h-5 text-green-200" />
-            <p className="text-sm text-green-100 font-medium">Đã thu</p>
+        <div className="p-4 sm:p-5 bg-green-600 rounded-xl">
+          <div className="flex items-center gap-2 mb-1 sm:mb-2">
+            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-200" />
+            <p className="text-xs sm:text-sm text-green-100 font-medium">Đã thu</p>
           </div>
-          <p className="text-2xl font-bold text-white">
+          <p className="text-xl sm:text-2xl font-bold text-white break-words">
             {totalPaid.toLocaleString('vi-VN')}đ
           </p>
         </div>
-        <div className="p-5 bg-orange-600 rounded-xl">
-          <div className="flex items-center gap-2 mb-2">
-            <Clock className="w-5 h-5 text-orange-200" />
-            <p className="text-sm text-orange-100 font-medium">Còn nợ</p>
+        <div className="p-4 sm:p-5 bg-orange-600 rounded-xl">
+          <div className="flex items-center gap-2 mb-1 sm:mb-2">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-orange-200" />
+            <p className="text-xs sm:text-sm text-orange-100 font-medium">Còn nợ</p>
           </div>
-          <p className="text-2xl font-bold text-white">
+          <p className="text-xl sm:text-2xl font-bold text-white break-words">
             {totalRemaining.toLocaleString('vi-VN')}đ
           </p>
         </div>
@@ -112,62 +112,64 @@ export default function DebtSummary({ activities, onMarkAllPaid, isAdmin }: Debt
 
       {/* Individual Debts */}
       <div>
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <Users className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+        <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
+          <Users className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600 dark:text-gray-400" />
           Chi tiết từng người
         </h3>
         <div className="space-y-3">
           {debts.map((debt) => (
             <div
               key={debt.name}
-              className="p-5 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-violet-400 dark:hover:border-violet-600 transition-colors bg-white dark:bg-gray-800"
+              className="p-4 sm:p-5 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-violet-400 dark:hover:border-violet-600 transition-colors bg-white dark:bg-gray-800"
             >
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-violet-600 rounded-full flex items-center justify-center text-white font-semibold">
+              <div className="flex justify-between items-start mb-3 sm:mb-4 gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-violet-600 rounded-full flex items-center justify-center text-white font-semibold text-sm sm:text-base flex-shrink-0">
                     {debt.name.charAt(0).toUpperCase()}
                   </div>
-                  <h4 className="font-bold text-lg text-gray-900 dark:text-white">
+                  <h4 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white truncate">
                     {debt.name}
                   </h4>
                 </div>
                 {debt.remainingDebt === 0 ? (
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded-lg">
-                    <CheckCircle className="w-4 h-4" />
-                    Đã thanh toán
+                  <span className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 text-white text-xs sm:text-sm font-semibold rounded-lg flex-shrink-0">
+                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Đã thanh toán</span>
+                    <span className="sm:hidden">Xong</span>
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 text-white text-sm font-semibold rounded-lg">
-                    <Clock className="w-4 h-4" />
-                    Còn nợ
+                  <span className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-orange-600 text-white text-xs sm:text-sm font-semibold rounded-lg flex-shrink-0">
+                    <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Còn nợ</span>
+                    <span className="sm:hidden">Nợ</span>
                   </span>
                 )}
               </div>
               
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-750 rounded-lg">
+              <div className="space-y-2 text-xs sm:text-sm">
+                <div className="flex justify-between items-center p-2 sm:p-3 bg-gray-50 dark:bg-gray-750 rounded-lg gap-2">
                   <span className="text-gray-600 dark:text-gray-400 font-medium">Tổng phải trả:</span>
-                  <span className="font-bold text-gray-900 dark:text-white">
+                  <span className="font-bold text-gray-900 dark:text-white break-words text-right">
                     {debt.totalDebt.toLocaleString('vi-VN')}đ
                   </span>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <div className="flex justify-between items-center p-2 sm:p-3 bg-green-50 dark:bg-green-900/20 rounded-lg gap-2">
                   <span className="text-gray-600 dark:text-gray-400 font-medium">Đã trả:</span>
-                  <span className="font-bold text-green-600 dark:text-green-400">
+                  <span className="font-bold text-green-600 dark:text-green-400 break-words text-right">
                     {debt.paidAmount.toLocaleString('vi-VN')}đ
                   </span>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                <div className="flex justify-between items-center p-2 sm:p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800 gap-2">
                   <span className="font-semibold text-gray-900 dark:text-white">Còn nợ:</span>
-                  <span className="font-bold text-orange-600 dark:text-orange-400 text-lg">
+                  <span className="font-bold text-orange-600 dark:text-orange-400 text-base sm:text-lg break-words text-right">
                     {debt.remainingDebt.toLocaleString('vi-VN')}đ
                   </span>
                 </div>
               </div>
 
               {/* Progress Bar */}
-              <div className="mt-4">
-                <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+              <div className="mt-3 sm:mt-4">
+                <div className="flex justify-between text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2">
                   <span className="font-medium">Tiến độ</span>
                   <span className="font-semibold">
                     {((debt.paidAmount / debt.totalDebt) * 100).toFixed(1)}%
@@ -185,10 +187,11 @@ export default function DebtSummary({ activities, onMarkAllPaid, isAdmin }: Debt
               {isAdmin && debt.remainingDebt > 0 && (
                 <button
                   onClick={() => handleMarkAllPaidClick(debt.name, debt.remainingDebt)}
-                  className="mt-4 w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
+                  className="mt-3 sm:mt-4 w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium flex items-center justify-center gap-2 text-sm sm:text-base"
                 >
-                  <Check className="w-4 h-4" />
-                  Đánh dấu đã thanh toán hết
+                  <Check className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Đánh dấu đã thanh toán hết</span>
+                  <span className="sm:hidden">Đã thanh toán</span>
                 </button>
               )}
             </div>
@@ -197,33 +200,33 @@ export default function DebtSummary({ activities, onMarkAllPaid, isAdmin }: Debt
       </div>
 
       {/* Statistics */}
-      <div className="p-5 bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-200 dark:border-violet-800">
-        <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+      <div className="p-4 sm:p-5 bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-200 dark:border-violet-800">
+        <h4 className="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+          <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-violet-600 dark:text-violet-400" />
           Thống kê
         </h4>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg">
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">Số người tham gia</p>
-            <p className="text-2xl font-bold text-violet-600 dark:text-violet-400">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg">
+            <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1">Số người tham gia</p>
+            <p className="text-xl sm:text-2xl font-bold text-violet-600 dark:text-violet-400">
               {debts.length}
             </p>
           </div>
-          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg">
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">Số hoạt động</p>
-            <p className="text-2xl font-bold text-violet-600 dark:text-violet-400">
+          <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg">
+            <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1">Số hoạt động</p>
+            <p className="text-xl sm:text-2xl font-bold text-violet-600 dark:text-violet-400">
               {activities.length}
             </p>
           </div>
-          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg">
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">Đã thanh toán đủ</p>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+          <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg">
+            <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1">Đã thanh toán đủ</p>
+            <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">
               {debts.filter(d => d.remainingDebt === 0).length}
             </p>
           </div>
-          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg">
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">Còn nợ</p>
-            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+          <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg">
+            <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-1">Còn nợ</p>
+            <p className="text-xl sm:text-2xl font-bold text-orange-600 dark:text-orange-400">
               {debts.filter(d => d.remainingDebt > 0).length}
             </p>
           </div>

@@ -79,15 +79,15 @@ export default function QRCodeManager({ paymentQR, onUpdate, isAdmin }: QRCodeMa
     }
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-violet-600 rounded-2xl mb-4">
-            <QrCode className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-violet-600 rounded-2xl mb-3 sm:mb-4">
+            <QrCode className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
             Thông tin thanh toán
           </h3>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Quét mã QR hoặc chuyển khoản theo thông tin bên dưới
           </p>
         </div>
@@ -98,71 +98,71 @@ export default function QRCodeManager({ paymentQR, onUpdate, isAdmin }: QRCodeMa
             <img
               src={paymentQR.imageUrl}
               alt="QR Code"
-              className="w-80 h-80 object-contain border-2 border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg"
+              className="w-64 h-64 sm:w-80 sm:h-80 object-contain border-2 border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg"
             />
           </div>
         </div>
 
         {/* Bank Information */}
         {(paymentQR.bankName || paymentQR.accountNumber || paymentQR.accountName) && (
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 space-y-4">
-            <h4 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-              <Wallet className="w-5 h-5 text-violet-600" />
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
+            <h4 className="font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+              <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-violet-600" />
               Thông tin chuyển khoản
             </h4>
             
             {paymentQR.bankName && (
-              <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 rounded-xl">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Ngân hàng</p>
-                  <p className="font-bold text-gray-900 dark:text-white">{paymentQR.bankName}</p>
+              <div className="flex items-center justify-between p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-xl gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1">Ngân hàng</p>
+                  <p className="font-bold text-gray-900 dark:text-white text-sm sm:text-base break-words">{paymentQR.bankName}</p>
                 </div>
                 <button
                   onClick={() => copyToClipboard(paymentQR.bankName!, 'bank')}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
                 >
                   {copied === 'bank' ? (
-                    <Check className="w-5 h-5 text-green-600" />
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                   ) : (
-                    <Copy className="w-5 h-5 text-gray-400" />
+                    <Copy className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                   )}
                 </button>
               </div>
             )}
 
             {paymentQR.accountNumber && (
-              <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 rounded-xl">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Số tài khoản</p>
-                  <p className="font-bold text-gray-900 dark:text-white font-mono">{paymentQR.accountNumber}</p>
+              <div className="flex items-center justify-between p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-xl gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1">Số tài khoản</p>
+                  <p className="font-bold text-gray-900 dark:text-white font-mono text-sm sm:text-base break-all">{paymentQR.accountNumber}</p>
                 </div>
                 <button
                   onClick={() => copyToClipboard(paymentQR.accountNumber!, 'account')}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
                 >
                   {copied === 'account' ? (
-                    <Check className="w-5 h-5 text-green-600" />
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                   ) : (
-                    <Copy className="w-5 h-5 text-gray-400" />
+                    <Copy className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                   )}
                 </button>
               </div>
             )}
 
             {paymentQR.accountName && (
-              <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 rounded-xl">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Tên tài khoản</p>
-                  <p className="font-bold text-gray-900 dark:text-white">{paymentQR.accountName}</p>
+              <div className="flex items-center justify-between p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-xl gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1">Tên tài khoản</p>
+                  <p className="font-bold text-gray-900 dark:text-white text-sm sm:text-base break-words">{paymentQR.accountName}</p>
                 </div>
                 <button
                   onClick={() => copyToClipboard(paymentQR.accountName!, 'name')}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
                 >
                   {copied === 'name' ? (
-                    <Check className="w-5 h-5 text-green-600" />
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                   ) : (
-                    <Copy className="w-5 h-5 text-gray-400" />
+                    <Copy className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                   )}
                 </button>
               </div>
@@ -175,22 +175,22 @@ export default function QRCodeManager({ paymentQR, onUpdate, isAdmin }: QRCodeMa
 
   // Admin edit mode
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-violet-600 rounded-2xl mb-4">
-          <QrCode className="w-8 h-8 text-white" />
+        <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-violet-600 rounded-2xl mb-3 sm:mb-4">
+          <QrCode className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
         </div>
-        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
           Quản lý QR Code thanh toán
         </h3>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
           Tải lên mã QR thanh toán để người khác có thể chuyển tiền dễ dàng
         </p>
       </div>
 
       {/* Upload Image */}
       <div>
-        <label className="block text-sm font-bold text-gray-900 dark:text-white mb-3">
+        <label className="block text-sm font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">
           Ảnh QR Code <span className="text-red-500">*</span>
         </label>
         <div className="relative">
@@ -209,18 +209,18 @@ export default function QRCodeManager({ paymentQR, onUpdate, isAdmin }: QRCodeMa
           />
         </div>
         {imageUrl && (
-          <div className="mt-6 flex justify-center">
+          <div className="mt-4 sm:mt-6 flex justify-center">
             <img
               src={imageUrl}
               alt="QR Code"
-              className="w-80 h-80 object-contain border-2 border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg"
+              className="w-64 h-64 sm:w-80 sm:h-80 object-contain border-2 border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg"
             />
           </div>
         )}
       </div>
 
       {/* Bank Details */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <div>
           <label className="block text-sm font-bold text-gray-900 dark:text-white mb-2">
             Tên ngân hàng (tùy chọn)
