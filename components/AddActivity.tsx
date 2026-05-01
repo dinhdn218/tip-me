@@ -23,7 +23,10 @@ export default function AddActivity({ onAdd, existingParticipants }: AddActivity
   const [participants, setParticipants] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   // Format number to Vietnamese currency format
   const formatCurrency = (value: string): string => {
@@ -53,22 +56,70 @@ export default function AddActivity({ onAdd, existingParticipants }: AddActivity
       );
       setFilteredSuggestions(filtered);
       setShowSuggestions(filtered.length > 0);
+      setHighlightedIndex(-1);
     } else {
       setShowSuggestions(false);
+      setHighlightedIndex(-1);
     }
   };
 
-  // Select suggestion
+  // Select suggestion → add directly to participants list
   const selectSuggestion = (name: string) => {
-    setParticipantInput(name);
+    if (!participants.includes(name)) {
+      setParticipants(prev => [...prev, name]);
+    }
+    setParticipantInput('');
     setShowSuggestions(false);
+    setHighlightedIndex(-1);
     inputRef.current?.focus();
   };
 
-  // Close suggestions when clicking outside
+  // Keyboard navigation for suggestions
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || filteredSuggestions.length === 0) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAddParticipant();
+      }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex(prev => {
+        const next = prev < filteredSuggestions.length - 1 ? prev + 1 : 0;
+        scrollIntoView(next);
+        return next;
+      });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex(prev => {
+        const next = prev > 0 ? prev - 1 : filteredSuggestions.length - 1;
+        scrollIntoView(next);
+        return next;
+      });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlightedIndex >= 0) {
+        selectSuggestion(filteredSuggestions[highlightedIndex]);
+      } else {
+        handleAddParticipant();
+      }
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      setHighlightedIndex(-1);
+    }
+  };
+
+  const scrollIntoView = (index: number) => {
+    if (!listRef.current) return;
+    const item = listRef.current.children[index] as HTMLElement | undefined;
+    item?.scrollIntoView({ block: 'nearest' });
+  };
+
+  // Close suggestions when clicking outside the entire wrapper
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (inputRef.current && !inputRef.current.contains(event.target as Node)) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
       }
     };
@@ -168,24 +219,30 @@ export default function AddActivity({ onAdd, existingParticipants }: AddActivity
           )}
         </Label>
         <div className="flex gap-2">
-          <div className="flex-1 relative">
+          <div ref={wrapperRef} className="flex-1 relative">
             <Input
               ref={inputRef}
               type="text"
               value={participantInput}
               onChange={handleParticipantInputChange}
-              onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddParticipant())}
+              onKeyDown={handleKeyDown}
               placeholder="Nhập tên người tham gia"
+              aria-autocomplete="list"
+              aria-expanded={showSuggestions}
+              aria-activedescendant={highlightedIndex >= 0 ? `suggestion-${highlightedIndex}` : undefined}
             />
             {/* Autocomplete suggestions */}
             {showSuggestions && filteredSuggestions.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                {filteredSuggestions.map((name) => (
+              <div ref={listRef} className="absolute z-10 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {filteredSuggestions.map((name, index) => (
                   <button
                     key={name}
+                    id={`suggestion-${index}`}
                     type="button"
                     onClick={() => selectSuggestion(name)}
-                    className="w-full px-4 py-2.5 text-left hover:bg-accent transition-colors flex items-center gap-3 border-b border-border last:border-0"
+                    className={`w-full px-4 py-2.5 text-left transition-colors flex items-center gap-3 border-b border-border last:border-0 ${
+                      index === highlightedIndex ? 'bg-accent' : 'hover:bg-accent/60'
+                    }`}
                   >
                     <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center text-primary-foreground font-semibold text-xs shrink-0">
                       {name.charAt(0).toUpperCase()}

@@ -66,6 +66,9 @@ export default function DebtSummary({ activities, onMarkAllPaid, isAdmin }: Debt
   const totalPaid = debts.reduce((sum, d) => sum + d.paidAmount, 0);
   const totalRemaining = debts.reduce((sum, d) => sum + d.remainingDebt, 0);
 
+  // Round up to nearest thousand for display
+  const roundUpK = (n: number) => Math.ceil(n / 1000) * 1000;
+
   if (activities.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -95,7 +98,7 @@ export default function DebtSummary({ activities, onMarkAllPaid, isAdmin }: Debt
                 <Icon className={`w-4 h-4 ${color}`} />
               </div>
               <p className="text-xs text-muted-foreground mb-1">{label}</p>
-              <p className="text-sm sm:text-base font-bold text-foreground break-all">{value.toLocaleString('vi-VN')}đ</p>
+              <p className="text-sm sm:text-base font-bold text-foreground break-all">{roundUpK(value).toLocaleString('vi-VN')}đ</p>
             </CardContent>
           </Card>
         ))}
@@ -129,15 +132,15 @@ export default function DebtSummary({ activities, onMarkAllPaid, isAdmin }: Debt
                   <div className="space-y-1.5 text-xs mb-3">
                     <div className="flex justify-between items-center py-1.5 px-3 bg-muted/40 rounded-lg">
                       <span className="text-muted-foreground">Tổng phải trả</span>
-                      <span className="font-semibold text-foreground">{debt.totalDebt.toLocaleString('vi-VN')}đ</span>
+                      <span className="font-semibold text-foreground">{roundUpK(debt.totalDebt).toLocaleString('vi-VN')}đ</span>
                     </div>
                     <div className="flex justify-between items-center py-1.5 px-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg">
                       <span className="text-muted-foreground">Đã trả</span>
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">{debt.paidAmount.toLocaleString('vi-VN')}đ</span>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">{roundUpK(debt.paidAmount).toLocaleString('vi-VN')}đ</span>
                     </div>
                     <div className="flex justify-between items-center py-1.5 px-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-100 dark:border-orange-900/50">
                       <span className="font-medium text-foreground">Còn nợ</span>
-                      <span className="font-bold text-orange-600 dark:text-orange-400 text-sm">{debt.remainingDebt.toLocaleString('vi-VN')}đ</span>
+                      <span className="font-bold text-orange-600 dark:text-orange-400 text-sm">{roundUpK(debt.remainingDebt).toLocaleString('vi-VN')}đ</span>
                     </div>
                   </div>
 
@@ -195,7 +198,7 @@ export default function DebtSummary({ activities, onMarkAllPaid, isAdmin }: Debt
       {confirmMarkPaid.show && (
         <ConfirmDialog
           title="Xác nhận đã thanh toán"
-          message={`Bạn xác nhận "${confirmMarkPaid.name}" đã thanh toán hết số tiền ${confirmMarkPaid.amount.toLocaleString('vi-VN')}đ? Tất cả các khoản nợ của người này sẽ được đánh dấu là đã thanh toán.`}
+          message={`Bạn xác nhận "${confirmMarkPaid.name}" đã thanh toán hết số tiền ${roundUpK(confirmMarkPaid.amount).toLocaleString('vi-VN')}đ? Tất cả các khoản nợ của người này sẽ được đánh dấu là đã thanh toán.`}
           onConfirm={confirmMarkAllPaid}
           onCancel={cancelMarkPaid}
           confirmText="Xác nhận"
