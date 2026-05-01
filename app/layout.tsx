@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
-import { Montserrat, Geist } from "next/font/google";
+import { Geist, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ['latin'], variable: '--font-geist' });
 
-const montserrat = Montserrat({
-  variable: "--font-montserrat",
-  subsets: ["latin", "vietnamese"],
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
+const instrumentSerif = Instrument_Serif({
+  subsets: ['latin'],
+  weight: '400',
+  style: ['normal', 'italic'],
+  variable: '--font-instrument-serif',
 });
 
 export const metadata: Metadata = {
@@ -33,10 +34,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={cn("font-sans", geist.variable)}>
-      <body
-        className={`${montserrat.variable} antialiased`}
-      >
+    <html lang="vi" className={cn(geist.variable, instrumentSerif.variable)}>
+      <body className="antialiased">
         <TooltipProvider>
           {children}
         </TooltipProvider>

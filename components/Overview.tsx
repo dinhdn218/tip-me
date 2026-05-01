@@ -1,176 +1,363 @@
 'use client';
 
+import { useRef } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { Activity } from '@/types';
-import { TrendingUp, Users, DollarSign, Clock, Calendar, CheckCircle, ArrowUpRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import {
+  TrendingUp, Users, Calendar, CheckCircle, Clock,
+  Plus, ChevronRight, BarChart3, Wallet,
+} from 'lucide-react';
 
-interface OverviewProps {
-  activities: Activity[];
+gsap.registerPlugin(useGSAP);
+
+// ── Animated counter ─────────────────────────────────────────────────────────
+function AnimatedNumber({ value, className }: { value: number; className?: string }) {
+  const el = useRef<HTMLSpanElement>(null);
+  const counter = useRef({ n: 0 });
+
+  useGSAP(() => {
+    counter.current.n = 0;
+    gsap.to(counter.current, {
+      n: value,
+      duration: 1.4,
+      ease: 'power3.out',
+      onUpdate() {
+        if (el.current)
+          el.current.textContent = Math.round(counter.current.n).toLocaleString('vi-VN');
+      },
+    });
+  }, { dependencies: [value] });
+
+  return <span ref={el} className={className}>0</span>;
 }
 
-export default function Overview({ activities }: OverviewProps) {
-  const totalSpent = activities.reduce((sum, act) => sum + act.totalAmount, 0);
-  const totalActivities = activities.length;
+// ── Props ─────────────────────────────────────────────────────────────────────
+interface OverviewProps {
+  activities: Activity[];
+  isAdmin?: boolean;
+  onNavigate?: (tab: string) => void;
+}
 
-  const allParticipants = new Set<string>();
-  activities.forEach(act => {
-    act.participants.forEach(p => allParticipants.add(p.name));
-  });
+export default function Overview({ activities, isAdmin = false, onNavigate }: OverviewProps) {
+  const gridRef = useRef<HTMLDivElement>(null);
 
-  const totalPaid = activities.reduce((sum, act) => {
-    return sum + act.participants.filter(p => p.paid).length * act.amountPerPerson;
-  }, 0);
-
+  // ── Computed ────────────────────────────────────────────────────────────────
+  const totalSpent = activities.reduce((s, a) => s + a.totalAmount, 0);
+  const totalPaid = activities.reduce(
+    (s, a) => s + a.participants.filter(p => p.paid).length * a.amountPerPerson, 0
+  );
   const totalUnpaid = totalSpent - totalPaid;
   const progressPct = totalSpent > 0 ? (totalPaid / totalSpent) * 100 : 0;
-  const recentActivities = activities.slice(0, 5);
 
-  const stats = [
-    {
-      label: 'Hoạt động',
-      value: totalActivities,
-      icon: Calendar,
-      color: 'text-blue-600 dark:text-blue-400',
-      bg: 'bg-blue-50 dark:bg-blue-950/50',
-    },
-    {
-      label: 'Thành viên',
-      value: allParticipants.size,
-      icon: Users,
-      color: 'text-violet-600 dark:text-violet-400',
-      bg: 'bg-violet-50 dark:bg-violet-950/50',
-    },
-    {
-      label: 'Tổng chi',
-      value: `${totalSpent.toLocaleString('vi-VN')}đ`,
-      icon: TrendingUp,
-      color: 'text-orange-600 dark:text-orange-400',
-      bg: 'bg-orange-50 dark:bg-orange-950/50',
-    },
-    {
-      label: 'Đã thu',
-      value: `${totalPaid.toLocaleString('vi-VN')}đ`,
-      icon: DollarSign,
-      color: 'text-emerald-600 dark:text-emerald-400',
-      bg: 'bg-emerald-50 dark:bg-emerald-950/50',
-    },
-  ];
+  // Circle SVG: r=16 → circumference ≈ 100.5
+  const R = 16;
+  const C = 2 * Math.PI * R;
 
+  // Per-person debt map
+  const personMap = new Map<string, { paid: number; total: number }>();
+  activities.forEach(a =>
+    a.participants.forEach(p => {
+      const c = personMap.get(p.name) ?? { paid: 0, total: 0 };
+      personMap.set(p.name, {
+        total: c.total + a.amountPerPerson,
+        paid:  c.paid  + (p.paid ? a.amountPerPerson : 0),
+      });
+    })
+  );
+  const persons = Array.from(personMap.entries())
+    .sort((a, b) => (b[1].total - b[1].paid) - (a[1].total - a[1].paid));
+  const paidPersons = persons.filter(([, v]) => v.paid >= v.total).length;
+
+  const recentActivities = activities.slice(0, 4);
+
+  // ── GSAP stagger reveal ─────────────────────────────────────────────────────
+  useGSAP(() => {
+    gsap.from('.bento-card', {
+      y: 22,
+      opacity: 0,
+      duration: 0.55,
+      stagger: { amount: 0.35 },
+      ease: 'power2.out',
+      clearProps: 'transform,opacity',
+    });
+  }, { scope: gridRef });
+
+  // ── Empty state ─────────────────────────────────────────────────────────────
   if (activities.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-muted">
-          <Calendar className="w-10 h-10 text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mb-5">
+          <Wallet className="w-9 h-9 text-muted-foreground" />
         </div>
-        <div className="text-center">
-          <p className="text-lg font-semibold text-foreground">Chưa có hoạt động nào</p>
-          <p className="text-sm text-muted-foreground mt-1">Thêm hoạt động đầu tiên để bắt đầu!</p>
-        </div>
+        <h3 className="text-xl font-semibold text-foreground mb-2">Chưa có hoạt động nào</h3>
+        <p className="text-sm text-muted-foreground max-w-xs mb-6">
+          Thêm hoạt động đầu tiên để bắt đầu theo dõi chi phí nhóm
+        </p>
+        {isAdmin && (
+          <Button onClick={() => onNavigate?.('add')} className="gap-2">
+            <Plus className="w-4 h-4" /> Thêm hoạt động
+          </Button>
+        )}
       </div>
     );
   }
 
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {stats.map(({ label, value, icon: Icon, color, bg }) => (
-          <Card key={label} className="border-border/60 shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex items-start justify-between mb-3">
-                <div className={`p-2 rounded-lg ${bg}`}>
-                  <Icon className={`w-4 h-4 ${color}`} />
-                </div>
-                <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/50" />
-              </div>
-              <p className="text-xs text-muted-foreground font-medium mb-1">{label}</p>
-              <p className="text-xl sm:text-2xl font-bold text-foreground leading-none break-all">{value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+    <div ref={gridRef} className="grid grid-cols-12 gap-3 sm:gap-4">
 
-      {/* Progress Card */}
-      <Card className="border-border/60 shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold">Tiến độ thu tiền</CardTitle>
-            <Badge variant={progressPct >= 100 ? 'default' : progressPct > 50 ? 'secondary' : 'outline'}>
-              {progressPct.toFixed(1)}%
-            </Badge>
+      {/* ── Hero Balance ──────────────────────────────────────────────────── */}
+      <Card className="bento-card col-span-12 lg:col-span-8 bg-primary text-primary-foreground border-0 overflow-hidden relative">
+        {/* Decorative blobs */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute right-20 -bottom-6 w-36 h-36 rounded-full bg-white/[0.06] blur-2xl" />
+        </div>
+
+        <CardContent className="p-5 sm:p-7 relative">
+          <div className="flex items-start justify-between mb-3">
+            <p className="text-primary-foreground/65 text-[11px] font-semibold uppercase tracking-widest">
+              Tổng chi phí nhóm
+            </p>
+            <div className="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4" />
+            </div>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Progress value={progressPct} className="h-2.5" />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-primary inline-block" />
-              Đã thu: <span className="font-semibold text-foreground">{totalPaid.toLocaleString('vi-VN')}đ</span>
+
+          <div className="flex items-baseline gap-2 mb-6">
+            <span className="font-display text-4xl sm:text-5xl italic font-normal tracking-tight leading-none">
+              <AnimatedNumber value={totalSpent} />
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-muted-foreground/30 inline-block" />
-              Còn lại: <span className="font-semibold text-foreground">{totalUnpaid.toLocaleString('vi-VN')}đ</span>
-            </span>
+            <span className="text-primary-foreground/70 text-lg font-medium">đ</span>
+          </div>
+
+          <div className="flex items-center gap-5">
+            <div>
+              <p className="text-primary-foreground/50 text-[10px] uppercase tracking-wide mb-0.5">Hoạt động</p>
+              <p className="font-bold text-base">{activities.length}</p>
+            </div>
+            <Separator orientation="vertical" className="h-7 bg-white/20" />
+            <div>
+              <p className="text-primary-foreground/50 text-[10px] uppercase tracking-wide mb-0.5">Thành viên</p>
+              <p className="font-bold text-base">{personMap.size}</p>
+            </div>
+            <Separator orientation="vertical" className="h-7 bg-white/20" />
+            <div>
+              <p className="text-primary-foreground/50 text-[10px] uppercase tracking-wide mb-0.5">Thu được</p>
+              <p className="font-bold text-base">{Math.round(progressPct)}%</p>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Recent Activities */}
-      {recentActivities.length > 0 && (
-        <Card className="border-border/60 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <CardTitle className="text-base font-semibold">Hoạt động gần đây</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-border/60">
-              {recentActivities.map((activity, idx) => {
-                const paidCount = activity.participants.filter(p => p.paid).length;
-                const totalCount = activity.participants.length;
-                const allPaid = paidCount === totalCount;
+      {/* ── Collection Progress ───────────────────────────────────────────── */}
+      <Card className="bento-card col-span-12 lg:col-span-4">
+        <CardContent className="p-5 flex flex-col gap-4 h-full justify-between">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+            Tiến độ thu hồi
+          </p>
 
-                return (
-                  <div
-                    key={activity.id}
-                    className="flex items-center justify-between px-6 py-3.5 hover:bg-muted/40 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-xs text-muted-foreground/60 font-mono w-5 shrink-0">{idx + 1}</span>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <h4 className="text-sm font-medium text-foreground truncate">{activity.title}</h4>
-                          {allPaid && (
-                            <Badge variant="default" className="text-[10px] px-1.5 py-0 h-4 shrink-0 bg-emerald-600 hover:bg-emerald-600">
-                              <CheckCircle className="w-2.5 h-2.5 mr-0.5" />
-                              Xong
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(activity.date).toLocaleDateString('vi-VN')} · {activity.participants.length} người
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0 ml-4">
-                      <p className="text-sm font-semibold text-foreground">
-                        {activity.totalAmount.toLocaleString('vi-VN')}đ
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {paidCount}/{totalCount} đã trả
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="flex items-center gap-4">
+            {/* SVG circle progress */}
+            <div className="relative w-20 h-20 shrink-0">
+              <svg viewBox="0 0 36 36" className="w-20 h-20 -rotate-90">
+                <circle cx="18" cy="18" r={R} fill="none"
+                  className="stroke-muted" strokeWidth="2.5" />
+                <circle cx="18" cy="18" r={R} fill="none"
+                  strokeWidth="2.5" strokeLinecap="round"
+                  stroke="var(--credit)"
+                  strokeDasharray={`${(progressPct / 100) * C} ${C}`} />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-foreground">
+                {Math.round(progressPct)}%
+              </span>
             </div>
-          </CardContent>
-        </Card>
-      )}
+
+            <div className="space-y-1">
+              <p className="font-semibold text-sm text-foreground">
+                {paidPersons}/{personMap.size} đã thanh toán
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {personMap.size - paidPersons} người còn nợ
+              </p>
+              <Button size="sm" variant="outline"
+                className="h-7 text-xs mt-1.5 gap-1.5"
+                onClick={() => onNavigate?.('summary')}>
+                <BarChart3 className="w-3 h-3" /> Công nợ
+              </Button>
+            </div>
+          </div>
+
+          {/* Split bar */}
+          <div>
+            <div className="flex justify-between text-[11px] text-muted-foreground mb-1.5">
+              <span>Đã thu</span><span>Còn nợ</span>
+            </div>
+            <div className="h-2 rounded-full bg-muted overflow-hidden flex">
+              <div className="h-full rounded-l-full transition-all duration-1000"
+                style={{ width: `${progressPct}%`, backgroundColor: 'var(--credit)' }} />
+              <div className="h-full flex-1 rounded-r-full"
+                style={{ backgroundColor: 'oklch(0.91 0.04 25)' }} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Credit Card ───────────────────────────────────────────────────── */}
+      <Card className="bento-card col-span-6 lg:col-span-4 border-0"
+        style={{ backgroundColor: 'var(--credit-bg)' }}>
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <CheckCircle className="w-3.5 h-3.5" style={{ color: 'var(--credit)' }} />
+            <p className="text-[11px] font-semibold uppercase tracking-widest"
+              style={{ color: 'var(--credit-foreground)' }}>Đã thu</p>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="font-display text-2xl sm:text-3xl italic"
+              style={{ color: 'var(--credit)' }}>
+              <AnimatedNumber value={totalPaid} />
+            </span>
+            <span className="text-sm" style={{ color: 'var(--credit)' }}>đ</span>
+          </div>
+          <div className="mt-3 h-1 rounded-full overflow-hidden bg-black/[0.06]">
+            <div className="h-full rounded-full transition-all duration-1000"
+              style={{ width: `${progressPct}%`, backgroundColor: 'var(--credit)' }} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Debt Card ─────────────────────────────────────────────────────── */}
+      <Card className="bento-card col-span-6 lg:col-span-4 border-0"
+        style={{ backgroundColor: 'var(--debt-bg)' }}>
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Clock className="w-3.5 h-3.5" style={{ color: 'var(--debt)' }} />
+            <p className="text-[11px] font-semibold uppercase tracking-widest"
+              style={{ color: 'var(--debt-foreground)' }}>Còn nợ</p>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="font-display text-2xl sm:text-3xl italic"
+              style={{ color: 'var(--debt)' }}>
+              <AnimatedNumber value={totalUnpaid} />
+            </span>
+            <span className="text-sm" style={{ color: 'var(--debt)' }}>đ</span>
+          </div>
+          <div className="mt-3 h-1 rounded-full overflow-hidden bg-black/[0.06]">
+            <div className="h-full rounded-full transition-all duration-1000"
+              style={{ width: `${100 - progressPct}%`, backgroundColor: 'var(--debt)' }} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Participants ──────────────────────────────────────────────────── */}
+      <Card className="bento-card col-span-12 lg:col-span-4">
+        <CardHeader className="pb-1 pt-4 px-4">
+          <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5" /> Thành viên
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 space-y-2.5">
+          {persons.slice(0, 4).map(([name, { paid, total }]) => {
+            const pct = total > 0 ? (paid / total) * 100 : 100;
+            const isDone = paid >= total;
+            return (
+              <div key={name} className="flex items-center gap-2.5">
+                <Avatar className="w-7 h-7 shrink-0">
+                  <AvatarFallback className="text-[10px] font-bold bg-secondary text-secondary-foreground">
+                    {name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <p className="text-xs font-medium text-foreground truncate">{name}</p>
+                    <span className="text-[10px] font-semibold ml-1.5 shrink-0"
+                      style={{ color: isDone ? 'var(--credit)' : 'var(--debt)' }}>
+                      {isDone ? '✓ Xong' : `-${(total - paid).toLocaleString('vi-VN')}đ`}
+                    </span>
+                  </div>
+                  <div className="h-1 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor: isDone ? 'var(--credit)' : 'var(--debt)',
+                      }} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {persons.length > 4 && (
+            <p className="text-[11px] text-muted-foreground">+{persons.length - 4} người khác</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Recent Activities ─────────────────────────────────────────────── */}
+      <Card className="bento-card col-span-12">
+        <CardHeader className="pb-2 pt-4 px-5 flex flex-row items-center justify-between">
+          <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5" /> Hoạt động gần đây
+          </CardTitle>
+          {activities.length > 4 && (
+            <Button variant="ghost" size="sm"
+              onClick={() => onNavigate?.('list')}
+              className="text-xs gap-1 h-7 text-muted-foreground hover:text-foreground">
+              Tất cả <ChevronRight className="w-3 h-3" />
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="px-5 pb-4">
+          <div className="divide-y divide-border">
+            {recentActivities.map(act => {
+              const paidCount = act.participants.filter(p => p.paid).length;
+              const allPaid  = paidCount === act.participants.length;
+              const date = new Date(act.date).toLocaleDateString('vi-VN', {
+                day: '2-digit', month: '2-digit',
+              });
+              return (
+                <div key={act.id}
+                  className="flex items-center gap-3 py-3 -mx-5 px-5 hover:bg-muted/40 transition-colors">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-sm font-bold"
+                    style={{
+                      backgroundColor: allPaid ? 'var(--credit-bg)' : 'var(--debt-bg)',
+                      color: allPaid ? 'var(--credit)' : 'var(--debt)',
+                    }}>
+                    {act.title.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm text-foreground truncate">{act.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {act.participants.length} người · {date}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-semibold text-sm text-foreground">
+                      {act.totalAmount.toLocaleString('vi-VN')}đ
+                    </p>
+                    <p className="text-[11px] font-medium"
+                      style={{ color: allPaid ? 'var(--credit)' : 'var(--debt)' }}>
+                      {paidCount}/{act.participants.length} đã trả
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {isAdmin && (
+            <Button onClick={() => onNavigate?.('add')}
+              variant="outline" size="sm" className="w-full mt-3 gap-2">
+              <Plus className="w-4 h-4" /> Thêm hoạt động mới
+            </Button>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

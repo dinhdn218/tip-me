@@ -427,11 +427,7 @@ export default function Home() {
             <div className="lg:min-h-[calc(100vh-3.5rem)] bg-background">
               {activeTab === 'overview' && (
                 <div className="p-4 sm:p-6">
-                  <div className="mb-4 sm:mb-6">
-                    <h2 className="text-xl font-bold text-foreground mb-0.5">Tổng quan</h2>
-                    <p className="text-muted-foreground text-sm">Xem thống kê và báo cáo tổng hợp</p>
-                  </div>
-                  <Overview activities={activities} />
+                  <Overview activities={activities} isAdmin={isAdmin} onNavigate={(tab) => setActiveTab(tab as 'summary' | 'list' | 'add' | 'overview' | 'qr')} />
                 </div>
               )}
               
