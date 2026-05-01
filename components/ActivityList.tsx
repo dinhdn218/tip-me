@@ -4,6 +4,10 @@ import { Activity, PaymentQR } from '@/types';
 import { useState } from 'react';
 import { Trash2, CheckCircle, Calendar, Users, X, DollarSign } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 
 interface ActivityListProps {
   activities: Activity[];
@@ -76,16 +80,14 @@ export default function ActivityList({ activities, onUpdate, onDelete, onDeleteA
 
   if (activities.length === 0) {
     return (
-      <div className="text-center py-16">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-4">
-          <Users className="w-10 h-10 text-gray-400 dark:text-gray-600" />
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-muted">
+          <Users className="w-10 h-10 text-muted-foreground" />
         </div>
-        <p className="text-gray-600 dark:text-gray-400 text-lg font-semibold">
-          Chưa có hoạt động nào
-        </p>
-        <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
-          Hãy thêm hoạt động mới để bắt đầu
-        </p>
+        <div className="text-center">
+          <p className="text-lg font-semibold text-foreground">Chưa có hoạt động nào</p>
+          <p className="text-sm text-muted-foreground mt-1">Hãy thêm hoạt động mới để bắt đầu</p>
+        </div>
       </div>
     );
   }
@@ -95,196 +97,136 @@ export default function ActivityList({ activities, onUpdate, onDelete, onDeleteA
       {/* Delete All Button */}
       {isAdmin && activities.length > 0 && (
         <div className="flex justify-end">
-          <button
+          <Button
+            variant="destructive"
+            size="sm"
             onClick={handleDeleteAllClick}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2 text-sm"
           >
             <Trash2 className="w-4 h-4" />
-            Xóa tất cả hoạt động ({activities.length})
-          </button>
+            Xóa tất cả ({activities.length})
+          </Button>
         </div>
       )}
 
       <div className="space-y-3">
-      {activities.map((activity) => {
-        const paidCount = activity.participants.filter(p => p.paid).length;
-        const totalCount = activity.participants.length;
-        const allPaid = paidCount === totalCount;
+        {activities.map((activity) => {
+          const paidCount = activity.participants.filter(p => p.paid).length;
+          const totalCount = activity.participants.length;
+          const allPaid = paidCount === totalCount;
 
-        return (
-          <div
-            key={activity.id}
-            onClick={() => openActivityDetail(activity)}
-            className={`border rounded-xl p-4 cursor-pointer transition-all hover:shadow-md ${
-              allPaid 
-                ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10' 
-                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-violet-300 dark:hover:border-violet-700'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-4">
-              {/* Left: Title & Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="font-bold text-lg text-gray-900 dark:text-white truncate">
-                    {activity.title}
-                  </h3>
-                  {allPaid && (
-                    <span className="px-2 py-0.5 bg-green-600 text-white text-xs font-semibold rounded flex items-center gap-1 flex-shrink-0">
-                      <CheckCircle className="w-3 h-3" />
-                      Xong
-                    </span>
-                  )}
-                </div>
-                
-                {/* Date & Amount Row */}
-                <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 mb-2">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    <span>{new Date(activity.date).toLocaleDateString('vi-VN')}</span>
+          return (
+            <Card
+              key={activity.id}
+              onClick={() => openActivityDetail(activity)}
+              className={`cursor-pointer transition-all hover:shadow-md border-border/60 ${
+                allPaid ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50' : 'hover:border-primary/40'
+              }`}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="font-semibold text-base text-foreground truncate">{activity.title}</h3>
+                      {allPaid && (
+                        <Badge className="bg-emerald-600 hover:bg-emerald-600 shrink-0 text-[10px] px-1.5 h-4">
+                          <CheckCircle className="w-2.5 h-2.5 mr-0.5" />Xong
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2.5">
+                      <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{new Date(activity.date).toLocaleDateString('vi-VN')}</span>
+                      <span className="w-px h-3 bg-border" />
+                      <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{totalCount} người</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs">
+                      <span className="text-muted-foreground">Tổng: <span className="font-semibold text-foreground">{activity.totalAmount.toLocaleString('vi-VN')}đ</span></span>
+                      <span className="w-px h-3 bg-border hidden sm:block" />
+                      <span className="text-muted-foreground">Mỗi người: <span className="font-semibold text-primary">{activity.amountPerPerson.toLocaleString('vi-VN')}đ</span></span>
+                    </div>
                   </div>
-                  <div className="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
-                  <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    <span>{totalCount} người</span>
-                  </div>
+                  <Badge variant={allPaid ? 'default' : 'secondary'} className={`shrink-0 text-xs font-bold ${allPaid ? 'bg-emerald-600 hover:bg-emerald-600' : ''}`}>
+                    {paidCount}/{totalCount}
+                  </Badge>
                 </div>
-
-                {/* Money Info */}
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm">
-                  <div>
-                    <span className="text-gray-500 dark:text-gray-400">Tổng: </span>
-                    <span className="font-bold text-gray-900 dark:text-white">
-                      {activity.totalAmount.toLocaleString('vi-VN')}đ
-                    </span>
-                  </div>
-                  <div className="h-4 w-px bg-gray-300 dark:bg-gray-600 hidden sm:block"></div>
-                  <div>
-                    <span className="text-gray-500 dark:text-gray-400">Mỗi người: </span>
-                    <span className="font-bold text-violet-600 dark:text-violet-400">
-                      {activity.amountPerPerson.toLocaleString('vi-VN')}đ
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right: Status Badge */}
-              <div className="flex-shrink-0">
-                <div className={`px-3 py-1.5 rounded-lg text-sm font-bold ${
-                  allPaid
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                    : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
-                }`}>
-                  {paidCount}/{totalCount}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Activity Detail Modal */}
       {selectedActivity && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 animate-fade-in" onClick={closeActivityDetail}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden animate-scale-in" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-background rounded-2xl shadow-2xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden border border-border" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
-            <div className="bg-violet-600 p-4 sm:p-6 flex items-center justify-between sticky top-0 z-10">
+            <div className="bg-primary p-4 sm:p-6 flex items-center justify-between sticky top-0 z-10">
               <div className="flex-1 min-w-0 pr-2 sm:pr-4">
-                <h3 className="text-lg sm:text-2xl font-bold text-white mb-1 sm:mb-2 break-words leading-tight">{selectedActivity.title}</h3>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-white/90 text-xs sm:text-sm">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span>{new Date(selectedActivity.date).toLocaleDateString('vi-VN')}</span>
-                  </div>
-                  <div className="h-3 sm:h-4 w-px bg-white/30"></div>
-                  <div className="flex items-center gap-1">
-                    <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span>{selectedActivity.participants.length} người</span>
-                  </div>
+                <h3 className="text-lg sm:text-2xl font-bold text-primary-foreground mb-1 sm:mb-2 break-words leading-tight">{selectedActivity.title}</h3>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-primary-foreground/80 text-xs sm:text-sm">
+                  <span className="flex items-center gap-1"><Calendar className="w-3 h-3 sm:w-4 sm:h-4" />{new Date(selectedActivity.date).toLocaleDateString('vi-VN')}</span>
+                  <span className="h-3 sm:h-4 w-px bg-primary-foreground/30" />
+                  <span className="flex items-center gap-1"><Users className="w-3 h-3 sm:w-4 sm:h-4" />{selectedActivity.participants.length} người</span>
                 </div>
               </div>
-              <button
-                onClick={closeActivityDetail}
-                className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center flex-shrink-0"
-              >
-                <X className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              </button>
+              <Button variant="ghost" size="icon" onClick={closeActivityDetail} className="text-primary-foreground hover:bg-primary-foreground/20 shrink-0">
+                <X className="w-5 h-5" />
+              </Button>
             </div>
 
-            {/* Modal Content - Scrollable */}
+            {/* Modal Content */}
             <div className="overflow-y-auto max-h-[calc(95vh-140px)] sm:max-h-[calc(90vh-180px)]">
-              <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
                 {/* Amount Summary */}
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
-                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1">Tổng chi phí</p>
-                    <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white break-words">
-                      {selectedActivity.totalAmount.toLocaleString('vi-VN')}đ
-                    </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 sm:p-4 bg-muted rounded-xl">
+                    <p className="text-xs text-muted-foreground mb-1">Tổng chi phí</p>
+                    <p className="text-lg sm:text-2xl font-bold text-foreground break-words">{selectedActivity.totalAmount.toLocaleString('vi-VN')}đ</p>
                   </div>
-                  <div className="p-3 sm:p-4 bg-violet-50 dark:bg-violet-900/20 rounded-xl">
-                    <p className="text-xs sm:text-sm text-violet-600 dark:text-violet-400 mb-1">Mỗi người</p>
-                    <p className="text-lg sm:text-2xl font-bold text-violet-700 dark:text-violet-300 break-words">
-                      {selectedActivity.amountPerPerson.toLocaleString('vi-VN')}đ
-                    </p>
+                  <div className="p-3 sm:p-4 bg-primary/10 rounded-xl">
+                    <p className="text-xs text-primary mb-1">Mỗi người</p>
+                    <p className="text-lg sm:text-2xl font-bold text-primary break-words">{selectedActivity.amountPerPerson.toLocaleString('vi-VN')}đ</p>
                   </div>
                 </div>
+
+                <Separator />
 
                 {/* Participants List */}
                 <div>
-                  <h4 className="font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
-                    <Users className="w-4 h-4 sm:w-5 sm:h-5 text-violet-600" />
-                    Danh sách người tham gia
+                  <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm">
+                    <Users className="w-4 h-4 text-primary" />Danh sách người tham gia
                   </h4>
                   <div className="space-y-2">
                     {selectedActivity.participants.map((participant) => (
                       <div
                         key={participant.name}
-                        className={`flex items-center justify-between p-3 sm:p-4 rounded-xl transition-colors ${
+                        className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border transition-colors ${
                           participant.paid
-                            ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800'
-                            : 'bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50'
+                            : 'bg-muted/40 border-border'
                         }`}
                       >
-                        {/* Left: Checkbox + Name */}
                         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                           {isAdmin ? (
                             <input
                               type="checkbox"
                               checked={participant.paid}
                               onChange={() => togglePayment(selectedActivity, participant.name)}
-                              className="w-4 h-4 sm:w-5 sm:h-5 text-violet-600 rounded focus:ring-2 focus:ring-violet-500/30 cursor-pointer flex-shrink-0"
+                              className="w-4 h-4 sm:w-5 sm:h-5 accent-primary rounded cursor-pointer flex-shrink-0"
                             />
                           ) : (
-                            <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                              participant.paid 
-                                ? 'bg-green-600 border-green-600' 
-                                : 'border-gray-300 dark:border-gray-600'
-                            }`}>
-                              {participant.paid && <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-white" />}
+                            <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${participant.paid ? 'bg-emerald-600 border-emerald-600' : 'border-muted-foreground/30'}`}>
+                              {participant.paid && <CheckCircle className="w-3 h-3 text-white" />}
                             </div>
                           )}
-                          <span className={`font-medium text-sm sm:text-lg truncate ${
-                            participant.paid
-                              ? 'text-gray-500 dark:text-gray-400 line-through'
-                              : 'text-gray-900 dark:text-white'
-                          }`}>
+                          <span className={`font-medium text-sm sm:text-base truncate ${participant.paid ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
                             {participant.name}
                           </span>
                         </div>
-
-                        {/* Right: Amount + Status */}
-                        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                          <span className={`font-bold text-sm sm:text-lg ${
-                            participant.paid
-                              ? 'text-green-600 dark:text-green-400'
-                              : 'text-gray-900 dark:text-white'
-                          }`}>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`font-semibold text-sm sm:text-base ${participant.paid ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
                             {selectedActivity.amountPerPerson.toLocaleString('vi-VN')}đ
                           </span>
-                          {participant.paid && (
-                            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                          )}
+                          {participant.paid && <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
                         </div>
                       </div>
                     ))}
@@ -293,16 +235,17 @@ export default function ActivityList({ activities, onUpdate, onDelete, onDeleteA
 
                 {/* Delete Button */}
                 {isAdmin && (
-                  <button
+                  <Button
+                    variant="destructive"
+                    className="w-full"
                     onClick={() => {
                       handleDeleteClick(selectedActivity.id, selectedActivity.title);
                       closeActivityDetail();
                     }}
-                    className="w-full px-4 sm:px-6 py-2.5 sm:py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-bold flex items-center justify-center gap-2 text-sm sm:text-base"
                   >
-                    <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <Trash2 className="w-4 h-4" />
                     Xóa hoạt động
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>

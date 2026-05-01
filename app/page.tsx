@@ -14,6 +14,9 @@ import { Plus, List, BarChart3, QrCode, Wallet, Wifi, WifiOff, Home as HomeIcon,
 import * as firebaseService from '@/lib/firebaseService';
 import toast, { Toaster } from 'react-hot-toast';
 import { hashPin, verifyPin } from '@/lib/securityUtils';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 
 export default function Home() {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -281,10 +284,10 @@ export default function Home() {
       />
       
       {isLoading && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-md z-50 flex items-center justify-center">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl flex items-center gap-4 border-2 border-violet-200 dark:border-violet-700">
-            <Loader2 className="w-10 h-10 text-violet-600 animate-spin" />
-            <span className="text-xl font-black text-gray-800 dark:text-white tracking-tight">Đang xử lý...</span>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-background p-6 rounded-2xl shadow-2xl flex items-center gap-3 border border-border">
+            <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            <span className="text-sm font-semibold text-foreground">Đang xử lý...</span>
           </div>
         </div>
       )}
@@ -297,41 +300,37 @@ export default function Home() {
         />
       )}
 
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="min-h-screen bg-muted/30 dark:bg-background">
         {/* Top Header */}
-        <header className="fixed top-0 left-0 right-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <header className="fixed top-0 left-0 right-0 z-40 bg-background border-b border-border">
           <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
+            <div className="flex items-center justify-between h-14">
               {/* Logo & Brand */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 bg-violet-600 rounded-lg">
-                  <Wallet className="w-5 h-5 text-white" />
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg">
+                  <Wallet className="w-4 h-4 text-primary-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-                    Chia Tiền Nhóm
-                  </h1>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                    Quản lý chi phí thông minh
-                  </p>
+                  <h1 className="text-sm font-bold text-foreground leading-none">Chia Tiền Nhóm</h1>
+                  <p className="text-[10px] text-muted-foreground hidden sm:block leading-none mt-0.5">Quản lý chi phí thông minh</p>
                 </div>
               </div>
 
               {/* Right Actions */}
               <div className="flex items-center gap-2">
                 {/* Connection Status */}
-                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800">
+                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-xs font-medium">
                   {isConnected ? (
                     <>
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <Wifi className="w-4 h-4 text-green-600 dark:text-green-400" />
-                      <span className="text-xs font-semibold text-green-600 dark:text-green-400">Online</span>
+                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                      <Wifi className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-emerald-600 dark:text-emerald-400">Online</span>
                     </>
                   ) : (
                     <>
-                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      <WifiOff className="w-4 h-4 text-red-600 dark:text-red-400" />
-                      <span className="text-xs font-semibold text-red-600 dark:text-red-400">Offline</span>
+                      <div className="w-1.5 h-1.5 bg-destructive rounded-full" />
+                      <WifiOff className="w-3.5 h-3.5 text-destructive" />
+                      <span className="text-destructive">Offline</span>
                     </>
                   )}
                 </div>
@@ -342,191 +341,95 @@ export default function Home() {
                 </div>
 
                 {/* User Badge */}
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-600 text-white">
-                  {isAdmin ? (
-                    <>
-                      <Shield className="w-4 h-4" />
-                      <span className="text-sm font-semibold hidden sm:inline">{adminName}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="w-4 h-4" />
-                      <span className="text-sm font-semibold hidden sm:inline">Xem</span>
-                    </>
-                  )}
-                </div>
+                <Badge variant={isAdmin ? 'default' : 'secondary'} className="flex items-center gap-1.5 px-2.5 py-1 h-auto">
+                  {isAdmin ? <Shield className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  <span className="hidden sm:inline text-xs">{isAdmin ? adminName : 'Xem'}</span>
+                </Badge>
 
                 {/* Logout Button */}
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors group"
-                  title="Đăng xuất"
-                >
-                  <LogOut className="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400" />
-                  <span className="hidden lg:inline text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400">Thoát</span>
-                </button>
+                <Button variant="ghost" size="sm" onClick={handleLogout} className="h-8 px-2 hover:text-destructive" title="Đăng xuất">
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden lg:inline text-xs">Thoát</span>
+                </Button>
               </div>
             </div>
           </div>
         </header>
 
         {/* Desktop Sidebar Navigation */}
-        <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 overflow-y-auto z-30">
-          <nav className="p-4 space-y-1">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-colors w-full ${
-                activeTab === 'overview'
-                  ? 'bg-violet-600 text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }`}
-            >
-              <HomeIcon className="w-5 h-5" />
-              <span>Tổng quan</span>
-            </button>
-            
-            {isAdmin && (
+        <aside className="hidden lg:block fixed left-0 top-14 bottom-0 w-56 bg-background border-r border-border overflow-y-auto z-30">
+          <nav className="p-3 space-y-1">
+            <Separator className="my-2" />
+            {[
+              { tab: 'overview', icon: HomeIcon, label: 'Tổng quan' },
+              ...(isAdmin ? [{ tab: 'add', icon: Plus, label: 'Thêm mới' }] : []),
+              { tab: 'list', icon: List, label: 'Hoạt động', badge: activities.length },
+              { tab: 'summary', icon: BarChart3, label: 'Công nợ' },
+              { tab: 'qr', icon: QrCode, label: 'QR Code' },
+            ].map(({ tab, icon: Icon, label, badge }) => (
               <button
-                onClick={() => setActiveTab('add')}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-colors w-full ${
-                  activeTab === 'add'
-                    ? 'bg-violet-600 text-white'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                key={tab}
+                onClick={() => setActiveTab(tab as typeof activeTab)}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-sm transition-colors w-full ${
+                  activeTab === tab
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                 }`}
               >
-                <Plus className="w-5 h-5" />
-                <span>Thêm mới</span>
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="flex-1 text-left">{label}</span>
+                {badge !== undefined && badge > 0 && (
+                  <Badge variant={activeTab === tab ? 'outline' : 'secondary'} className={`text-[10px] px-1.5 h-4 ${activeTab === tab ? 'border-primary-foreground/50 text-primary-foreground' : ''}`}>
+                    {badge}
+                  </Badge>
+                )}
               </button>
-            )}
-            
-            <button
-              onClick={() => setActiveTab('list')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-colors w-full ${
-                activeTab === 'list'
-                  ? 'bg-violet-600 text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }`}
-            >
-              <List className="w-5 h-5" />
-              <span className="flex-1 text-left">Hoạt động</span>
-              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                activeTab === 'list' ? 'bg-white/20' : 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300'
-              }`}>
-                {activities.length}
-              </span>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('summary')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-colors w-full ${
-                activeTab === 'summary'
-                  ? 'bg-violet-600 text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }`}
-            >
-              <BarChart3 className="w-5 h-5" />
-              <span>Công nợ</span>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('qr')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-colors w-full ${
-                activeTab === 'qr'
-                  ? 'bg-violet-600 text-white'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }`}
-            >
-              <QrCode className="w-5 h-5" />
-              <span>QR Code</span>
-            </button>
+            ))}
           </nav>
         </aside>
 
         {/* Bottom Mobile Navigation */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 pb-safe">
-          <div className="flex items-center justify-around px-1 py-1.5 sm:py-2">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-1.5 px-1.5 sm:px-2 rounded-lg font-medium transition-all ${
-                activeTab === 'overview'
-                  ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
-                  : 'text-gray-600 dark:text-gray-400'
-              }`}
-            >
-              <HomeIcon className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
-              <span className="text-[10px] sm:text-xs leading-none">Tổng quan</span>
-            </button>
-            
-            {isAdmin && (
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-md border-t border-border pb-safe">
+          <div className="flex items-center justify-around px-1 py-1.5">
+            {[
+              { tab: 'overview', icon: HomeIcon, label: 'Tổng quan' },
+              ...(isAdmin ? [{ tab: 'add', icon: Plus, label: 'Thêm' }] : []),
+              { tab: 'list', icon: List, label: 'Danh sách', badge: activities.length },
+              { tab: 'summary', icon: BarChart3, label: 'Công nợ' },
+              { tab: 'qr', icon: QrCode, label: 'QR' },
+            ].map(({ tab, icon: Icon, label, badge }) => (
               <button
-                onClick={() => setActiveTab('add')}
-                className={`flex flex-1 flex-col items-center gap-0.5 py-1.5 px-1.5 sm:px-2 rounded-lg font-medium transition-all ${
-                  activeTab === 'add'
-                    ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
-                    : 'text-gray-600 dark:text-gray-400'
+                key={tab}
+                onClick={() => setActiveTab(tab as typeof activeTab)}
+                className={`flex flex-1 flex-col items-center gap-0.5 py-1.5 px-1 rounded-lg font-medium transition-all ${
+                  activeTab === tab
+                    ? 'text-primary'
+                    : 'text-muted-foreground'
                 }`}
               >
-                <Plus className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
-                <span className="text-[10px] sm:text-xs leading-none">Thêm</span>
+                <div className="relative">
+                  <Icon className="w-5 h-5 shrink-0" />
+                  {badge !== undefined && badge > 0 && (
+                    <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 bg-destructive text-destructive-foreground text-[9px] rounded-full flex items-center justify-center font-bold leading-none">
+                      {badge > 99 ? '99+' : badge}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] leading-none">{label}</span>
               </button>
-            )}
-            
-            <button
-              onClick={() => setActiveTab('list')}
-              className={`relative flex flex-1 flex-col items-center gap-0.5 py-1.5 px-1.5 sm:px-2 rounded-lg font-medium transition-all ${
-                activeTab === 'list'
-                  ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
-                  : 'text-gray-600 dark:text-gray-400'
-              }`}
-            >
-              <div className="relative">
-                <List className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
-                {activities.length > 0 && (
-                  <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 bg-red-600 text-white text-[9px] sm:text-[10px] rounded-full flex items-center justify-center font-bold leading-none">
-                    {activities.length > 99 ? '99+' : activities.length}
-                  </span>
-                )}
-              </div>
-              <span className="text-[10px] sm:text-xs leading-none">Danh sách</span>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('summary')}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-1.5 px-1.5 sm:px-2 rounded-lg font-medium transition-all ${
-                activeTab === 'summary'
-                  ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
-                  : 'text-gray-600 dark:text-gray-400'
-              }`}
-            >
-              <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
-              <span className="text-[10px] sm:text-xs leading-none">Công nợ</span>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('qr')}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-1.5 px-1.5 sm:px-2 rounded-lg font-medium transition-all ${
-                activeTab === 'qr'
-                  ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30'
-                  : 'text-gray-600 dark:text-gray-400'
-              }`}
-            >
-              <QrCode className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
-              <span className="text-[10px] sm:text-xs leading-none">QR</span>
-            </button>
+            ))}
           </div>
         </nav>
 
         {/* Main Content */}
-        <main className="pt-16 pb-20 lg:pb-0 lg:pl-64 min-h-screen">
+        <main className="pt-14 pb-20 lg:pb-0 lg:pl-56 min-h-screen">
           <div className="mx-auto">
-            <div className="lg:min-h-[calc(100vh-4rem)] bg-white dark:bg-gray-800">
+            <div className="lg:min-h-[calc(100vh-3.5rem)] bg-background">
               {activeTab === 'overview' && (
                 <div className="p-4 sm:p-6">
                   <div className="mb-4 sm:mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                      Tổng quan
-                    </h2>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">Xem thống kê và báo cáo tổng hợp</p>
+                    <h2 className="text-xl font-bold text-foreground mb-0.5">Tổng quan</h2>
+                    <p className="text-muted-foreground text-sm">Xem thống kê và báo cáo tổng hợp</p>
                   </div>
                   <Overview activities={activities} />
                 </div>
@@ -536,10 +439,8 @@ export default function Home() {
                 <div className="p-4 sm:p-6">
                   <div className="max-w-3xl mx-auto">
                     <div className="mb-4 sm:mb-6">
-                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                        Thêm hoạt động mới
-                      </h2>
-                      <p className="text-gray-600 dark:text-gray-400 text-sm">Điền thông tin chi tiết về hoạt động chi tiêu</p>
+                      <h2 className="text-xl font-bold text-foreground mb-0.5">Thêm hoạt động mới</h2>
+                      <p className="text-muted-foreground text-sm">Điền thông tin chi tiết về hoạt động chi tiêu</p>
                     </div>
                     <AddActivity onAdd={addActivity} existingParticipants={getAllParticipants()} />
                   </div>
@@ -549,7 +450,7 @@ export default function Home() {
               {activeTab === 'list' && (
                 <div className="p-4 sm:p-6">
                   <div className="mb-4 sm:mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Danh sách hoạt động</h2>
+                    <h2 className="text-xl font-bold text-foreground mb-3">Danh sách hoạt động</h2>
                     <SearchFilter
                       activities={activities}
                       onFilteredResults={setFilteredActivities}
@@ -569,10 +470,8 @@ export default function Home() {
               {activeTab === 'summary' && (
                 <div className="p-4 sm:p-6">
                   <div className="mb-4 sm:mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                      Báo cáo công nợ
-                    </h2>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">Theo dõi chi tiết các khoản phải thu</p>
+                    <h2 className="text-xl font-bold text-foreground mb-0.5">Báo cáo công nợ</h2>
+                    <p className="text-muted-foreground text-sm">Theo dõi chi tiết các khoản phải thu</p>
                   </div>
                   <DebtSummary activities={activities} onMarkAllPaid={markAllPaidForPerson} isAdmin={isAdmin} />
                 </div>
@@ -582,10 +481,10 @@ export default function Home() {
                 <div className="p-4 sm:p-6">
                   <div className="max-w-2xl mx-auto">
                     <div className="mb-4 sm:mb-6">
-                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                      <h2 className="text-xl font-bold text-foreground mb-0.5">
                         {isAdmin ? 'Quản lý QR Code' : 'Thông tin thanh toán'}
                       </h2>
-                      <p className="text-gray-600 dark:text-gray-400 text-sm">
+                      <p className="text-muted-foreground text-sm">
                         {isAdmin ? 'Cập nhật thông tin thanh toán' : 'Xem thông tin chuyển khoản'}
                       </p>
                     </div>

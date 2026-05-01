@@ -3,6 +3,11 @@
 import { useState } from 'react';
 import { PaymentQR } from '@/types';
 import { Upload, Save, Trash2, QrCode, CheckCircle, Copy, Check, Wallet } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 interface QRCodeManagerProps {
   paymentQR: PaymentQR | null;
@@ -39,16 +44,12 @@ export default function QRCodeManager({ paymentQR, onUpdate, isAdmin }: QRCodeMa
       alert('Vui lòng tải lên ảnh QR code!');
       return;
     }
-
-    const qr: PaymentQR = {
+    onUpdate({
       imageUrl,
       bankName: bankName.trim() || undefined,
       accountNumber: accountNumber.trim() || undefined,
       accountName: accountName.trim() || undefined,
-    };
-
-    onUpdate(qr);
-    alert('Đã lưu thông tin thanh toán!');
+    });
   };
 
   const handleClear = () => {
@@ -60,114 +61,69 @@ export default function QRCodeManager({ paymentQR, onUpdate, isAdmin }: QRCodeMa
     }
   };
 
-  // View mode for viewers
+  // View mode
   if (!isAdmin) {
-    if (!paymentQR || !paymentQR.imageUrl) {
+    if (!paymentQR?.imageUrl) {
       return (
-        <div className="text-center py-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-4">
-            <QrCode className="w-10 h-10 text-gray-400" />
+        <div className="text-center py-16">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-muted rounded-2xl mb-4">
+            <QrCode className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-            Chưa có thông tin thanh toán
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400">
-            Admin chưa thiết lập QR code thanh toán
-          </p>
+          <p className="text-foreground font-semibold">Chưa có thông tin thanh toán</p>
+          <p className="text-muted-foreground text-sm mt-1">Admin chưa thiết lập QR code thanh toán</p>
         </div>
       );
     }
 
     return (
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-5 max-w-sm mx-auto">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-violet-600 rounded-2xl mb-3 sm:mb-4">
-            <QrCode className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-primary rounded-xl mb-3">
+            <QrCode className="w-6 h-6 text-primary-foreground" />
           </div>
-          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
-            Thông tin thanh toán
-          </h3>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-            Quét mã QR hoặc chuyển khoản theo thông tin bên dưới
-          </p>
+          <h3 className="text-lg font-bold text-foreground">Thông tin thanh toán</h3>
+          <p className="text-sm text-muted-foreground mt-0.5">Quét mã QR hoặc chuyển khoản theo thông tin bên dưới</p>
         </div>
 
-        {/* QR Code Image */}
         <div className="flex justify-center">
-          <div className="relative">
-            <img
-              src={paymentQR.imageUrl}
-              alt="QR Code"
-              className="w-64 h-64 sm:w-80 sm:h-80 object-contain border-2 border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg"
-            />
-          </div>
+          <img
+            src={paymentQR.imageUrl}
+            alt="QR Code thanh toán"
+            className="w-64 h-64 object-contain border border-border rounded-xl shadow-sm"
+          />
         </div>
 
-        {/* Bank Information */}
         {(paymentQR.bankName || paymentQR.accountNumber || paymentQR.accountName) && (
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
-            <h4 className="font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
-              <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-violet-600" />
-              Thông tin chuyển khoản
-            </h4>
-            
-            {paymentQR.bankName && (
-              <div className="flex items-center justify-between p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-xl gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1">Ngân hàng</p>
-                  <p className="font-bold text-gray-900 dark:text-white text-sm sm:text-base break-words">{paymentQR.bankName}</p>
+          <Card>
+            <CardHeader className="pb-2 pt-4 px-4">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-primary" />
+                Thông tin chuyển khoản
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-2">
+              {[
+                { key: 'bank', label: 'Ngân hàng', value: paymentQR.bankName },
+                { key: 'account', label: 'Số tài khoản', value: paymentQR.accountNumber, mono: true },
+                { key: 'name', label: 'Tên tài khoản', value: paymentQR.accountName },
+              ].filter(f => f.value).map(({ key, label, value, mono }) => (
+                <div key={key} className="flex items-center justify-between p-2.5 bg-muted/50 rounded-lg gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <p className={`font-semibold text-sm text-foreground break-all ${mono ? 'font-mono' : ''}`}>{value}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() => copyToClipboard(value!, key)}
+                  >
+                    {copied === key ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  </Button>
                 </div>
-                <button
-                  onClick={() => copyToClipboard(paymentQR.bankName!, 'bank')}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
-                >
-                  {copied === 'bank' ? (
-                    <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-                  ) : (
-                    <Copy className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                  )}
-                </button>
-              </div>
-            )}
-
-            {paymentQR.accountNumber && (
-              <div className="flex items-center justify-between p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-xl gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1">Số tài khoản</p>
-                  <p className="font-bold text-gray-900 dark:text-white font-mono text-sm sm:text-base break-all">{paymentQR.accountNumber}</p>
-                </div>
-                <button
-                  onClick={() => copyToClipboard(paymentQR.accountNumber!, 'account')}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
-                >
-                  {copied === 'account' ? (
-                    <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-                  ) : (
-                    <Copy className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                  )}
-                </button>
-              </div>
-            )}
-
-            {paymentQR.accountName && (
-              <div className="flex items-center justify-between p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-xl gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1">Tên tài khoản</p>
-                  <p className="font-bold text-gray-900 dark:text-white text-sm sm:text-base break-words">{paymentQR.accountName}</p>
-                </div>
-                <button
-                  onClick={() => copyToClipboard(paymentQR.accountName!, 'name')}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
-                >
-                  {copied === 'name' ? (
-                    <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-                  ) : (
-                    <Copy className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
+              ))}
+            </CardContent>
+          </Card>
         )}
       </div>
     );
@@ -175,121 +131,100 @@ export default function QRCodeManager({ paymentQR, onUpdate, isAdmin }: QRCodeMa
 
   // Admin edit mode
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="text-center">
-        <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-violet-600 rounded-2xl mb-3 sm:mb-4">
-          <QrCode className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+    <div className="space-y-5 max-w-lg mx-auto">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shrink-0">
+          <QrCode className="w-5 h-5 text-primary-foreground" />
         </div>
-        <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
-          Quản lý QR Code thanh toán
-        </h3>
-        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-          Tải lên mã QR thanh toán để người khác có thể chuyển tiền dễ dàng
-        </p>
+        <div>
+          <h3 className="font-bold text-foreground">Quản lý QR Code thanh toán</h3>
+          <p className="text-xs text-muted-foreground">Tải lên mã QR để người dùng có thể chuyển tiền</p>
+        </div>
       </div>
 
+      <Separator />
+
       {/* Upload Image */}
-      <div>
-        <label className="block text-sm font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">
-          Ảnh QR Code <span className="text-red-500">*</span>
-        </label>
-        <div className="relative">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="block w-full text-sm text-gray-500 dark:text-gray-400
-              file:mr-4 file:py-3 file:px-6
-              file:rounded-lg file:border-0
-              file:text-sm file:font-bold
-              file:bg-violet-600 file:text-white
-              hover:file:bg-violet-700
-              file:transition-colors
-              cursor-pointer border-2 border-gray-200 dark:border-gray-700 rounded-lg"
-          />
+      <div className="space-y-2">
+        <Label className="text-sm font-semibold">
+          Ảnh QR Code <span className="text-destructive">*</span>
+        </Label>
+        <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
+          <label className="cursor-pointer block">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="sr-only"
+            />
+            <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm font-medium text-foreground">Nhấn để tải lên ảnh QR</p>
+            <p className="text-xs text-muted-foreground mt-1">PNG, JPG, WEBP tối đa 5MB</p>
+          </label>
         </div>
         {imageUrl && (
-          <div className="mt-4 sm:mt-6 flex justify-center">
+          <div className="flex justify-center mt-3">
             <img
               src={imageUrl}
-              alt="QR Code"
-              className="w-64 h-64 sm:w-80 sm:h-80 object-contain border-2 border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg"
+              alt="QR Code preview"
+              className="w-56 h-56 object-contain border border-border rounded-xl shadow-sm"
             />
           </div>
         )}
       </div>
 
       {/* Bank Details */}
-      <div className="space-y-3 sm:space-y-4">
-        <div>
-          <label className="block text-sm font-bold text-gray-900 dark:text-white mb-2">
-            Tên ngân hàng (tùy chọn)
-          </label>
-          <input
-            type="text"
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Thông tin ngân hàng (tùy chọn)</p>
+        <div className="space-y-2">
+          <Label htmlFor="bankName">Tên ngân hàng</Label>
+          <Input
+            id="bankName"
             value={bankName}
             onChange={(e) => setBankName(e.target.value)}
             placeholder="VD: VietcomBank, Techcombank..."
-            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-900 dark:text-white transition-all placeholder:text-gray-400"
           />
         </div>
-
-        <div>
-          <label className="block text-sm font-bold text-gray-900 dark:text-white mb-2">
-            Số tài khoản (tùy chọn)
-          </label>
-          <input
-            type="text"
+        <div className="space-y-2">
+          <Label htmlFor="accountNumber">Số tài khoản</Label>
+          <Input
+            id="accountNumber"
             value={accountNumber}
             onChange={(e) => setAccountNumber(e.target.value)}
             placeholder="0123456789"
-            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-900 dark:text-white transition-all placeholder:text-gray-400"
           />
         </div>
-
-        <div>
-          <label className="block text-sm font-bold text-gray-900 dark:text-white mb-2">
-            Tên tài khoản (tùy chọn)
-          </label>
-          <input
-            type="text"
+        <div className="space-y-2">
+          <Label htmlFor="accountName">Tên tài khoản</Label>
+          <Input
+            id="accountName"
             value={accountName}
             onChange={(e) => setAccountName(e.target.value)}
             placeholder="NGUYEN VAN A"
-            className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-900 dark:text-white transition-all placeholder:text-gray-400"
           />
         </div>
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-3">
-        <button
-          onClick={handleSave}
-          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-bold transition-colors"
-        >
-          <Save className="w-5 h-5" />
+      <div className="flex gap-2">
+        <Button onClick={handleSave} className="flex-1 gap-2">
+          <Save className="w-4 h-4" />
           Lưu thông tin
-        </button>
+        </Button>
         {paymentQR && (
-          <button
-            onClick={handleClear}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-colors"
-          >
-            <Trash2 className="w-5 h-5" />
+          <Button variant="destructive" onClick={handleClear} className="gap-2">
+            <Trash2 className="w-4 h-4" />
             Xóa
-          </button>
+          </Button>
         )}
       </div>
 
-      {/* Success Message */}
       {paymentQR && (
-        <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border-2 border-green-200 dark:border-green-800">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-            <p className="text-green-800 dark:text-green-300 font-medium">
-              Thông tin thanh toán đã được lưu thành công!
-            </p>
-          </div>
+        <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+          <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
+            Thông tin thanh toán đã được lưu thành công!
+          </p>
         </div>
       )}
     </div>
