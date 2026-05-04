@@ -1,26 +1,71 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { Activity } from '@/types';
-import { UserPlus, X, CheckCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { useState, useRef, useEffect } from "react";
+import {
+  Activity,
+  ActivityCategory,
+  CATEGORY_LABELS,
+  CATEGORY_ICONS,
+} from "@/types";
+import {
+  UserPlus,
+  X,
+  CheckCircle,
+  Equal,
+  Percent,
+  DollarSign,
+  Users,
+  Calendar,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+
+type SplitMode = "equal" | "percentage" | "exact";
+
+interface ParticipantEntry {
+  name: string;
+  share: number;
+}
 
 interface AddActivityProps {
   onAdd: (activity: Activity) => void;
   existingParticipants: string[];
 }
 
-export default function AddActivity({ onAdd, existingParticipants }: AddActivityProps) {
-  const [title, setTitle] = useState('');
-  const [totalAmount, setTotalAmount] = useState('');
-  const [displayAmount, setDisplayAmount] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [participantInput, setParticipantInput] = useState('');
-  const [participants, setParticipants] = useState<string[]>([]);
+const CATEGORIES: ActivityCategory[] = [
+  "dining",
+  "travel",
+  "bills",
+  "entertainment",
+  "groceries",
+  "other",
+];
+
+const formatCurrency = (value: string) => {
+  const n = value.replace(/\D/g, "");
+  return n ? new Intl.NumberFormat("vi-VN").format(parseInt(n)) : "";
+};
+const fmt = (n: number) =>
+  n.toLocaleString("vi-VN", { maximumFractionDigits: 0 });
+
+export default function AddActivity({
+  onAdd,
+  existingParticipants,
+}: AddActivityProps) {
+  const [title, setTitle] = useState("");
+  const [totalAmount, setTotalAmount] = useState("");
+  const [displayAmount, setDisplayAmount] = useState("");
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [category, setCategory] = useState<ActivityCategory>("dining");
+  const [splitMode, setSplitMode] = useState<SplitMode>("equal");
+  const [participants, setParticipants] = useState<ParticipantEntry[]>([]);
+  const [participantInput, setParticipantInput] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -28,194 +73,306 @@ export default function AddActivity({ onAdd, existingParticipants }: AddActivity
   const wrapperRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Format number to Vietnamese currency format
-  const formatCurrency = (value: string): string => {
-    const number = value.replace(/\D/g, '');
-    if (!number) return '';
-    return new Intl.NumberFormat('vi-VN').format(parseInt(number));
+  const total = parseFloat(totalAmount) || 0;
+  const count = participants.length;
+
+  const livePreview = (): { name: string; owes: number }[] => {
+    if (count === 0 || total === 0) return [];
+    if (splitMode === "equal")
+      return participants.map((p) => ({ name: p.name, owes: total / count }));
+    if (splitMode === "percentage") {
+      const sumPct = participants.reduce((s, p) => s + p.share, 0);
+      return participants.map((p) => ({
+        name: p.name,
+        owes: sumPct > 0 ? (p.share / sumPct) * total : 0,
+      }));
+    }
+    return participants.map((p) => ({ name: p.name, owes: p.share }));
   };
 
-  // Handle amount input with formatting
+  const preview = livePreview();
+  const shareSum = participants.reduce((s, p) => s + p.share, 0);
+  const pctValid = splitMode !== "percentage" || Math.abs(shareSum - 100) < 0.1;
+  const exactValid = splitMode !== "exact" || Math.abs(shareSum - total) < 1;
+  const canSubmit =
+    title.trim().length > 0 &&
+    total > 0 &&
+    count >= 1 &&
+    pctValid &&
+    exactValid;
+
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    const numericValue = value.replace(/\D/g, '');
-    setTotalAmount(numericValue);
-    setDisplayAmount(formatCurrency(numericValue));
+    const numeric = e.target.value.replace(/\D/g, "");
+    setTotalAmount(numeric);
+    setDisplayAmount(formatCurrency(numeric));
   };
 
-  // Handle participant input and show suggestions
-  const handleParticipantInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleParticipantInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const value = e.target.value;
     setParticipantInput(value);
-
     if (value.trim()) {
       const filtered = existingParticipants.filter(
-        name => 
+        (name) =>
           name.toLowerCase().includes(value.toLowerCase()) &&
-          !participants.includes(name)
+          !participants.some((p) => p.name === name),
       );
       setFilteredSuggestions(filtered);
       setShowSuggestions(filtered.length > 0);
       setHighlightedIndex(-1);
     } else {
       setShowSuggestions(false);
-      setHighlightedIndex(-1);
     }
   };
 
-  // Select suggestion → add directly to participants list
-  const selectSuggestion = (name: string) => {
-    if (!participants.includes(name)) {
-      setParticipants(prev => [...prev, name]);
-    }
-    setParticipantInput('');
+  const addParticipant = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed || participants.some((p) => p.name === trimmed)) return;
+    setParticipants((prev) => [
+      ...prev,
+      {
+        name: trimmed,
+        share:
+          splitMode === "percentage" ? Math.round(100 / (prev.length + 1)) : 0,
+      },
+    ]);
+    setParticipantInput("");
     setShowSuggestions(false);
     setHighlightedIndex(-1);
     inputRef.current?.focus();
   };
 
-  // Keyboard navigation for suggestions
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showSuggestions || filteredSuggestions.length === 0) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleAddParticipant();
-      }
-      return;
-    }
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setHighlightedIndex(prev => {
-        const next = prev < filteredSuggestions.length - 1 ? prev + 1 : 0;
-        scrollIntoView(next);
-        return next;
-      });
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setHighlightedIndex(prev => {
-        const next = prev > 0 ? prev - 1 : filteredSuggestions.length - 1;
-        scrollIntoView(next);
-        return next;
-      });
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (highlightedIndex >= 0) {
-        selectSuggestion(filteredSuggestions[highlightedIndex]);
-      } else {
-        handleAddParticipant();
-      }
-    } else if (e.key === 'Escape') {
-      setShowSuggestions(false);
-      setHighlightedIndex(-1);
-    }
+  const removeParticipant = (name: string) =>
+    setParticipants((prev) => prev.filter((p) => p.name !== name));
+
+  const updateShare = (name: string, value: string) => {
+    const num = parseFloat(value) || 0;
+    setParticipants((prev) =>
+      prev.map((p) => (p.name === name ? { ...p, share: num } : p)),
+    );
   };
 
   const scrollIntoView = (index: number) => {
-    if (!listRef.current) return;
-    const item = listRef.current.children[index] as HTMLElement | undefined;
-    item?.scrollIntoView({ block: 'nearest' });
+    (
+      listRef.current?.children[index] as HTMLElement | undefined
+    )?.scrollIntoView({ block: "nearest" });
   };
 
-  // Close suggestions when clicking outside the entire wrapper
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || filteredSuggestions.length === 0) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        addParticipant(participantInput);
       }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleAddParticipant = () => {
-    if (participantInput.trim() && !participants.includes(participantInput.trim())) {
-      setParticipants([...participants, participantInput.trim()]);
-      setParticipantInput('');
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIndex((prev) => {
+        const n = prev < filteredSuggestions.length - 1 ? prev + 1 : 0;
+        scrollIntoView(n);
+        return n;
+      });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex((prev) => {
+        const n = prev > 0 ? prev - 1 : filteredSuggestions.length - 1;
+        scrollIntoView(n);
+        return n;
+      });
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      highlightedIndex >= 0
+        ? addParticipant(filteredSuggestions[highlightedIndex])
+        : addParticipant(participantInput);
+    } else if (e.key === "Escape") {
       setShowSuggestions(false);
     }
   };
 
-  const handleRemoveParticipant = (name: string) => {
-    setParticipants(participants.filter(p => p !== name));
-  };
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node))
+        setShowSuggestions(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!title.trim() || !totalAmount || participants.length === 0) {
-      alert('Vui lòng điền đầy đủ thông tin!');
-      return;
-    }
-
-    const amount = parseFloat(totalAmount);
-    if (isNaN(amount) || amount <= 0) {
-      alert('Số tiền không hợp lệ!');
-      return;
-    }
-
+    if (!canSubmit) return;
+    const pv = preview;
     const activity: Activity = {
       id: Date.now().toString(),
       title: title.trim(),
-      totalAmount: amount,
-      participants: participants.map(name => ({ name, paid: false })),
+      totalAmount: total,
+      category,
       date: new Date(selectedDate).toISOString(),
-      amountPerPerson: amount / participants.length,
+      amountPerPerson: count > 0 ? total / count : total,
+      participants: participants.map((p) => {
+        const found = pv.find((x) => x.name === p.name);
+        return {
+          name: p.name,
+          paid: false,
+          shareAmount: found?.owes ?? total / count,
+        };
+      }),
     };
-
     onAdd(activity);
-    
-    // Reset form
-    setTitle('');
-    setTotalAmount('');
-    setDisplayAmount('');
-    setSelectedDate(new Date().toISOString().split('T')[0]);
+    setTitle("");
+    setTotalAmount("");
+    setDisplayAmount("");
+    setSelectedDate(new Date().toISOString().split("T")[0]);
+    setCategory("dining");
+    setSplitMode("equal");
     setParticipants([]);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="title">Tên hoạt động</Label>
-        <Input
-          id="title"
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="VD: Đi ăn tối, Đi chơi..."
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="date">Ngày diễn ra</Label>
-        <Input
-          id="date"
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          max={new Date().toISOString().split('T')[0]}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="amount">Tổng tiền (VNĐ)</Label>
-        <div className="relative">
+    <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Basic info */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div className="sm:col-span-2 space-y-1.5">
+          <Label
+            htmlFor="title"
+            className="text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+          >
+            Tên hoạt động
+          </Label>
           <Input
-            id="amount"
-            type="text"
-            value={displayAmount}
-            onChange={handleAmountChange}
-            placeholder="500,000"
-            className="pr-14 text-base font-semibold"
+            id="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="VD: Ăn tối nhóm, Du lịch Đà Lạt..."
+            className="h-10"
           />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">VNĐ</span>
+        </div>
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="amount"
+            className="text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+          >
+            Tổng tiền (VNĐ)
+          </Label>
+          <div className="relative">
+            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              id="amount"
+              type="text"
+              inputMode="numeric"
+              value={displayAmount}
+              onChange={handleAmountChange}
+              placeholder="500,000"
+              className="pl-8 h-10 text-base font-semibold"
+            />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="date"
+            className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1"
+          >
+            <Calendar className="w-3 h-3" /> Ngày diễn ra
+          </Label>
+          <Input
+            id="date"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            max={new Date().toISOString().split("T")[0]}
+            className="h-10"
+          />
         </div>
       </div>
 
+      {/* Category */}
       <div className="space-y-2">
-        <Label className="flex items-center gap-2">
-          Người tham gia
-          {participants.length > 0 && (
-            <Badge variant="secondary" className="text-xs">{participants.length}</Badge>
+        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          Danh mục
+        </Label>
+        <div className="flex gap-1.5 flex-wrap">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setCategory(cat)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                category === cat
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "bg-muted text-muted-foreground border-transparent hover:border-border hover:text-foreground",
+              )}
+            >
+              <span role="img" aria-hidden>
+                {CATEGORY_ICONS[cat]}
+              </span>
+              {CATEGORY_LABELS[cat]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Split mode */}
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          Cách chia tiền
+        </Label>
+        <div className="grid grid-cols-3 gap-2 p-1.5 bg-muted rounded-xl">
+          {(
+            [
+              {
+                mode: "equal" as SplitMode,
+                icon: Equal,
+                label: "Chia đều",
+                desc: "Mỗi người trả như nhau",
+              },
+              {
+                mode: "percentage" as SplitMode,
+                icon: Percent,
+                label: "Theo %",
+                desc: "Tự chọn phần trăm",
+              },
+              {
+                mode: "exact" as SplitMode,
+                icon: DollarSign,
+                label: "Chính xác",
+                desc: "Nhập số tiền cụ thể",
+              },
+            ] as const
+          ).map(({ mode, icon: Icon, label, desc }) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setSplitMode(mode)}
+              className={cn(
+                "flex flex-col items-center gap-1 py-3 px-2 rounded-lg text-center transition-all",
+                splitMode === mode
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="w-4 h-4" />
+              <span className="text-xs font-semibold">{label}</span>
+              <span className="text-[10px] leading-tight hidden sm:block opacity-70">
+                {desc}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Participants */}
+      <div className="space-y-3">
+        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+          <Users className="w-3 h-3" /> Người tham gia
+          {count > 0 && (
+            <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+              {count}
+            </Badge>
           )}
         </Label>
         <div className="flex gap-2">
@@ -226,72 +383,165 @@ export default function AddActivity({ onAdd, existingParticipants }: AddActivity
               value={participantInput}
               onChange={handleParticipantInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Nhập tên người tham gia"
+              placeholder="Nhập tên rồi nhấn Enter..."
+              className="h-10"
               aria-autocomplete="list"
               aria-expanded={showSuggestions}
-              aria-activedescendant={highlightedIndex >= 0 ? `suggestion-${highlightedIndex}` : undefined}
+              aria-activedescendant={
+                highlightedIndex >= 0
+                  ? `suggestion-${highlightedIndex}`
+                  : undefined
+              }
             />
-            {/* Autocomplete suggestions */}
             {showSuggestions && filteredSuggestions.length > 0 && (
-              <div ref={listRef} className="absolute z-10 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              <div
+                ref={listRef}
+                className="absolute z-10 w-full mt-1 bg-popover border border-border rounded-xl shadow-lg max-h-52 overflow-y-auto"
+              >
                 {filteredSuggestions.map((name, index) => (
                   <button
                     key={name}
                     id={`suggestion-${index}`}
                     type="button"
-                    onClick={() => selectSuggestion(name)}
-                    className={`w-full px-4 py-2.5 text-left transition-colors flex items-center gap-3 border-b border-border last:border-0 ${
-                      index === highlightedIndex ? 'bg-accent' : 'hover:bg-accent/60'
-                    }`}
+                    onClick={() => addParticipant(name)}
+                    className={cn(
+                      "w-full px-4 py-2.5 text-left flex items-center gap-3 border-b border-border last:border-0 transition-colors text-sm",
+                      index === highlightedIndex
+                        ? "bg-accent"
+                        : "hover:bg-accent/60",
+                    )}
                   >
-                    <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center text-primary-foreground font-semibold text-xs shrink-0">
+                    <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-semibold text-xs shrink-0">
                       {name.charAt(0).toUpperCase()}
                     </div>
-                    <span className="text-sm font-medium text-foreground">{name}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">Đã từng tham gia</span>
+                    <span className="font-medium">{name}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      Đã từng tham gia
+                    </span>
                   </button>
                 ))}
               </div>
             )}
           </div>
-          <Button type="button" onClick={handleAddParticipant} variant="secondary">
-            <UserPlus className="w-4 h-4" />
-            Thêm
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => addParticipant(participantInput)}
+            className="h-10 gap-1.5"
+          >
+            <UserPlus className="w-4 h-4" /> Thêm
           </Button>
         </div>
 
-        {participants.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            {participants.map((name) => (
-              <Badge key={name} variant="secondary" className="pl-3 pr-1.5 py-1 gap-1.5 text-sm">
-                {name}
+        {count > 0 && (
+          <div className="space-y-2">
+            {participants.map((p) => (
+              <div
+                key={p.name}
+                className="flex items-center gap-2.5 bg-muted/50 rounded-xl px-3 py-2.5 border border-border/60"
+              >
+                <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                  {p.name.charAt(0).toUpperCase()}
+                </div>
+                <span className="flex-1 text-sm font-medium truncate">
+                  {p.name}
+                </span>
+                {splitMode !== "equal" && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Input
+                      type="number"
+                      value={p.share || ""}
+                      onChange={(e) => updateShare(p.name, e.target.value)}
+                      placeholder={splitMode === "percentage" ? "%" : "đ"}
+                      className="w-24 h-7 text-sm text-right"
+                      min={0}
+                    />
+                    <span className="text-xs text-muted-foreground w-4">
+                      {splitMode === "percentage" ? "%" : "đ"}
+                    </span>
+                  </div>
+                )}
                 <button
                   type="button"
-                  onClick={() => handleRemoveParticipant(name)}
-                  className="hover:bg-muted rounded p-0.5 transition-colors"
+                  onClick={() => removeParticipant(p.name)}
+                  className="text-muted-foreground hover:text-destructive transition-colors ml-1"
+                  aria-label={`Xóa ${p.name}`}
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-4 h-4" />
                 </button>
-              </Badge>
+              </div>
             ))}
+            {splitMode === "percentage" && (
+              <p
+                className={cn(
+                  "text-xs font-medium mt-1",
+                  Math.abs(shareSum - 100) < 0.1
+                    ? "text-emerald-600"
+                    : "text-orange-500",
+                )}
+              >
+                Tổng %: {shareSum.toFixed(1)}%
+                {Math.abs(shareSum - 100) < 0.1 ? " ✓" : " — cần đủ 100%"}
+              </p>
+            )}
+            {splitMode === "exact" && total > 0 && (
+              <p
+                className={cn(
+                  "text-xs font-medium mt-1",
+                  Math.abs(shareSum - total) < 1
+                    ? "text-emerald-600"
+                    : "text-orange-500",
+                )}
+              >
+                Tổng: {fmt(shareSum)}đ / {fmt(total)}đ
+                {Math.abs(shareSum - total) < 1 ? " ✓" : " — chưa khớp"}
+              </p>
+            )}
           </div>
         )}
       </div>
 
-      {participants.length > 0 && totalAmount && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground mb-1 font-medium">Mỗi người sẽ trả:</p>
-            <p className="text-2xl font-bold text-primary break-words">
-              {(parseFloat(totalAmount) / participants.length).toLocaleString('vi-VN')} VNĐ
+      {/* Live preview */}
+      {preview.length > 0 && (
+        <div className="rounded-xl border border-primary/20 bg-primary/5 overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-primary/10 flex items-center justify-between">
+            <p className="text-xs font-semibold text-primary/80 uppercase tracking-wide">
+              Xem trước phân chia
             </p>
-          </CardContent>
-        </Card>
+            <p className="text-xs font-bold text-primary">{fmt(total)}đ</p>
+          </div>
+          <div className="divide-y divide-primary/10">
+            {preview.map(({ name, owes }) => (
+              <div
+                key={name}
+                className="flex items-center justify-between px-4 py-2.5"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                    {name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm font-medium">{name}</span>
+                </div>
+                <Badge
+                  variant="secondary"
+                  className="font-mono text-xs tabular-nums"
+                >
+                  {fmt(owes)}đ
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
-      <Button type="submit" className="w-full">
+      {/* Submit */}
+      <Button
+        type="submit"
+        className="w-full h-11 gap-2 font-semibold text-sm"
+        disabled={!canSubmit}
+      >
         <CheckCircle className="w-4 h-4" />
-        Tạo hoạt động
+        Tạo hoạt động{total > 0 && count > 0 && ` — ${fmt(total)}đ`}
       </Button>
     </form>
   );
