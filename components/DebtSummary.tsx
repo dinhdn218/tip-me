@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, DebtSummary as DebtSummaryType } from "@/types";
+import { Activity, DebtSummary as DebtSummaryType, CATEGORY_ICONS } from "@/types";
 import {
   TrendingUp,
   TrendingDown,
@@ -10,6 +10,9 @@ import {
   CheckCircle,
   Clock,
   Check,
+  X,
+  Calendar,
+  Receipt,
 } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,16 +57,36 @@ export default function DebtSummary({
     setConfirmMarkPaid({ show: false, name: "", amount: 0 });
   };
 
+  const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
+
+  const getPersonActivities = (name: string) => {
+    return activities
+      .filter((a) => a.participants.some((p) => p.name === name))
+      .map((a) => {
+        const participant = a.participants.find((p) => p.name === name)!;
+        return {
+          activity: a,
+          share: participant.shareAmount ?? a.amountPerPerson,
+          paid: participant.paid,
+        };
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.activity.date).getTime() -
+          new Date(a.activity.date).getTime(),
+      );
+  };
+
   const calculateDebts = (): DebtSummaryType[] => {
     const debts = new Map<string, { total: number; paid: number }>();
 
     activities.forEach((activity) => {
       activity.participants.forEach((participant) => {
+        const share = participant.shareAmount ?? activity.amountPerPerson;
         const current = debts.get(participant.name) || { total: 0, paid: 0 };
         debts.set(participant.name, {
-          total: current.total + activity.amountPerPerson,
-          paid:
-            current.paid + (participant.paid ? activity.amountPerPerson : 0),
+          total: current.total + share,
+          paid: current.paid + (participant.paid ? share : 0),
         });
       });
     });
@@ -83,8 +106,15 @@ export default function DebtSummary({
   const totalPaid = debts.reduce((sum, d) => sum + d.paidAmount, 0);
   const totalRemaining = debts.reduce((sum, d) => sum + d.remainingDebt, 0);
 
-  // Round up to nearest thousand for display
-  const roundUpK = (n: number) => Math.ceil(n / 1000) * 1000;
+  // Round up to nearest thousand for display (only if not already a multiple of 1000)
+  const roundUpK = (n: number) => Math.ceil(Math.round(n) / 1000) * 1000;
+
+  const selectedPersonActivities = selectedPerson
+    ? getPersonActivities(selectedPerson)
+    : [];
+  const selectedPersonDebt = selectedPerson
+    ? debts.find((d) => d.name === selectedPerson) ?? null
+    : null;
 
   if (activities.length === 0) {
     return (
@@ -223,6 +253,16 @@ export default function DebtSummary({
                     <Progress value={pct} className="h-1.5" />
                   </div>
 
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-2 w-full gap-1.5 text-xs h-8"
+                    onClick={() => setSelectedPerson(debt.name)}
+                  >
+                    <Receipt className="w-3.5 h-3.5" />
+                    Xem hoạt động đã tham gia
+                  </Button>
+
                   {isAdmin && debt.remainingDebt > 0 && (
                     <Button
                       size="sm"
@@ -283,6 +323,139 @@ export default function DebtSummary({
           </div>
         </CardContent>
       </Card>
+
+      {/* Person Activity Detail Modal */}
+      {selectedPerson && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setSelectedPerson(null)}
+        >
+          <div
+            className="bg-background rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-hidden border border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-primary p-4 sm:p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-primary-foreground font-bold text-lg shrink-0">
+                  {selectedPerson.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-primary-foreground">
+                    {selectedPerson}
+                  </h3>
+                  <p className="text-xs text-primary-foreground/70">
+                    {selectedPersonActivities.length} hoạt động đã tham gia
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedPerson(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+              >
+                <X className="w-4 h-4 text-primary-foreground" />
+              </button>
+            </div>
+
+            {/* Stats */}
+            {selectedPersonDebt && (
+              <div className="grid grid-cols-3 gap-px bg-border border-b border-border">
+                <div className="bg-background p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">
+                    Tổng nợ
+                  </p>
+                  <p className="font-bold text-sm text-foreground">
+                    {roundUpK(selectedPersonDebt.totalDebt).toLocaleString("vi-VN")}đ
+                  </p>
+                </div>
+                <div className="bg-background p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">
+                    Đã trả
+                  </p>
+                  <p className="font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                    {roundUpK(selectedPersonDebt.paidAmount).toLocaleString("vi-VN")}đ
+                  </p>
+                </div>
+                <div className="bg-background p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">
+                    Còn nợ
+                  </p>
+                  <p className="font-bold text-sm text-orange-600 dark:text-orange-400">
+                    {roundUpK(selectedPersonDebt.remainingDebt).toLocaleString("vi-VN")}đ
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Activity list */}
+            <div className="overflow-y-auto max-h-[calc(90vh-220px)]">
+              <div className="p-3 space-y-2">
+                {selectedPersonActivities.length === 0 ? (
+                  <p className="text-center text-sm text-muted-foreground py-6">
+                    Không có hoạt động nào
+                  </p>
+                ) : (
+                  selectedPersonActivities.map(({ activity, share, paid }) => (
+                    <div
+                      key={activity.id}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                        paid
+                          ? "bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-800/50"
+                          : "bg-muted/40 border-border"
+                      }`}
+                    >
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0 ${
+                          paid
+                            ? "bg-emerald-100 dark:bg-emerald-900/30"
+                            : "bg-muted"
+                        }`}
+                      >
+                        {activity.category
+                          ? CATEGORY_ICONS[activity.category]
+                          : activity.title.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-foreground truncate">
+                          {activity.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(activity.date).toLocaleDateString("vi-VN", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p
+                          className={`font-bold text-sm ${
+                            paid
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-foreground"
+                          }`}
+                        >
+                          {roundUpK(share).toLocaleString("vi-VN")}đ
+                        </p>
+                        <span
+                          className={`text-[10px] font-semibold ${
+                            paid
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-orange-500"
+                          }`}
+                        >
+                          {paid ? "✓ Đã trả" : "Chưa trả"}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirm Mark Paid Dialog */}
       {confirmMarkPaid.show && (

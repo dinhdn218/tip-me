@@ -113,6 +113,10 @@ export default function ActivityList({ activities, onUpdate, onDelete, onDeleteA
           const paidCount = activity.participants.filter(p => p.paid).length;
           const totalCount = activity.participants.length;
           const allPaid = paidCount === totalCount;
+          const firstShare = activity.participants[0]?.shareAmount ?? activity.amountPerPerson;
+          const hasUnequalShares = totalCount > 1 && activity.participants.some(
+            (p) => Math.abs((p.shareAmount ?? activity.amountPerPerson) - firstShare) > 0.01
+          );
 
           return (
             <Card
@@ -141,7 +145,14 @@ export default function ActivityList({ activities, onUpdate, onDelete, onDeleteA
                     <div className="flex flex-wrap items-center gap-3 text-xs">
                       <span className="text-muted-foreground">Tổng: <span className="font-semibold text-foreground">{activity.totalAmount.toLocaleString('vi-VN')}đ</span></span>
                       <span className="w-px h-3 bg-border hidden sm:block" />
-                      <span className="text-muted-foreground">Mỗi người: <span className="font-semibold text-primary">{activity.amountPerPerson.toLocaleString('vi-VN')}đ</span></span>
+                      {hasUnequalShares ? (
+                        <span className="text-muted-foreground flex items-center gap-1.5">
+                          Chia riêng
+                          <Badge variant="outline" className="text-[9px] h-3.5 px-1 border-primary/40 text-primary font-semibold">Không đều</Badge>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">Mỗi người: <span className="font-semibold text-primary">{activity.amountPerPerson.toLocaleString('vi-VN')}đ</span></span>
+                      )}
                     </div>
                   </div>
                   <Badge variant={allPaid ? 'default' : 'secondary'} className={`shrink-0 text-xs font-bold ${allPaid ? 'bg-emerald-600 hover:bg-emerald-600' : ''}`}>
@@ -183,8 +194,18 @@ export default function ActivityList({ activities, onUpdate, onDelete, onDeleteA
                     <p className="text-lg sm:text-2xl font-bold text-foreground break-words">{selectedActivity.totalAmount.toLocaleString('vi-VN')}đ</p>
                   </div>
                   <div className="p-3 sm:p-4 bg-primary/10 rounded-xl">
-                    <p className="text-xs text-primary mb-1">Mỗi người</p>
-                    <p className="text-lg sm:text-2xl font-bold text-primary break-words">{selectedActivity.amountPerPerson.toLocaleString('vi-VN')}đ</p>
+                    <p className="text-xs text-primary mb-1">
+                      {selectedActivity.participants.some((p, _, arr) =>
+                        Math.abs((p.shareAmount ?? selectedActivity.amountPerPerson) -
+                          (arr[0].shareAmount ?? selectedActivity.amountPerPerson)) > 0.01
+                      ) ? "Chia không đều" : "Mỗi người"}
+                    </p>
+                    <p className="text-lg sm:text-2xl font-bold text-primary break-words">
+                      {selectedActivity.participants.some((p, _, arr) =>
+                        Math.abs((p.shareAmount ?? selectedActivity.amountPerPerson) -
+                          (arr[0].shareAmount ?? selectedActivity.amountPerPerson)) > 0.01
+                      ) ? "Xem bên dưới ↓" : selectedActivity.amountPerPerson.toLocaleString('vi-VN') + 'đ'}
+                    </p>
                   </div>
                 </div>
 
@@ -224,7 +245,7 @@ export default function ActivityList({ activities, onUpdate, onDelete, onDeleteA
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className={`font-semibold text-sm sm:text-base ${participant.paid ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
-                            {selectedActivity.amountPerPerson.toLocaleString('vi-VN')}đ
+                            {(participant.shareAmount ?? selectedActivity.amountPerPerson).toLocaleString('vi-VN')}đ
                           </span>
                           {participant.paid && <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
                         </div>

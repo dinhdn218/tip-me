@@ -80,7 +80,13 @@ export default function Overview({
   const totalSpent = activities.reduce((s, a) => s + a.totalAmount, 0);
   const totalPaid = activities.reduce(
     (s, a) =>
-      s + a.participants.filter((p) => p.paid).length * a.amountPerPerson,
+      s +
+      a.participants
+        .filter((p) => p.paid)
+        .reduce(
+          (sum, p) => sum + (p.shareAmount ?? a.amountPerPerson),
+          0,
+        ),
     0,
   );
   const totalUnpaid = totalSpent - totalPaid;
@@ -90,14 +96,17 @@ export default function Overview({
   const R = 16;
   const C = 2 * Math.PI * R;
 
+  const roundUpK = (n: number) => Math.ceil(Math.round(n) / 1000) * 1000;
+
   // Per-person debt map
   const personMap = new Map<string, { paid: number; total: number }>();
   activities.forEach((a) =>
     a.participants.forEach((p) => {
+      const share = p.shareAmount ?? a.amountPerPerson;
       const c = personMap.get(p.name) ?? { paid: 0, total: 0 };
       personMap.set(p.name, {
-        total: c.total + a.amountPerPerson,
-        paid: c.paid + (p.paid ? a.amountPerPerson : 0),
+        total: c.total + share,
+        paid: c.paid + (p.paid ? share : 0),
       });
     }),
   );
@@ -425,7 +434,7 @@ export default function Overview({
                         className="text-[10px] font-bold ml-1 shrink-0"
                         style={{ color: "var(--debt)" }}
                       >
-                        -{owed.toLocaleString("vi-VN")}đ
+                        -{roundUpK(owed).toLocaleString("vi-VN")}đ
                       </span>
                     </div>
                     <div className="h-1.5 rounded-full bg-muted overflow-hidden">
