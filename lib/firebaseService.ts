@@ -34,6 +34,7 @@ export const subscribeToActivities = (callback: (activities: Activity[]) => void
         participants: data.participants,
         date: data.date,
         amountPerPerson: data.amountPerPerson,
+        category: data.category ?? 'other',
       });
     });
     callback(activities);
@@ -64,6 +65,7 @@ export const updateActivity = async (id: string, activity: Activity) => {
       participants: activity.participants,
       date: activity.date,
       amountPerPerson: activity.amountPerPerson,
+      category: activity.category ?? 'other',
     });
   } catch (error) {
     console.error('Error updating activity:', error);

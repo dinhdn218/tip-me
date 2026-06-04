@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Lock, Eye, EyeOff, Shield, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,14 @@ export default function AuthModal({ onAdminLogin, onViewerMode, isFirstTime }: A
   const [showPin, setShowPin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Lock background scroll while the login screen is shown (the app shell
+  // renders behind it). Keeps the login at exactly one viewport, no scrollbar.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pin.trim()) {
@@ -36,25 +44,33 @@ export default function AuthModal({ onAdminLogin, onViewerMode, isFirstTime }: A
   };
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-violet-50 via-background to-fuchsia-50 dark:from-violet-950/30 dark:via-background dark:to-fuchsia-950/30 flex items-center justify-center p-4 z-50">
-      <div className="max-w-md w-full space-y-4 animate-fade-in">
+    <div className="fixed inset-0 flex items-center justify-center p-4 z-50 overflow-hidden">
+      {/* Animated mesh background — matches the app shell */}
+      <div className="app-bg" aria-hidden>
+        <div className="blob" style={{ width: '46vw', height: '46vw', top: '-10vh', left: '-8vw', background: 'oklch(0.62 0.20 280)' }} />
+        <div className="blob" style={{ width: '40vw', height: '40vw', top: '-6vh', right: '-10vw', left: 'auto', background: 'oklch(0.64 0.18 320)', animationDelay: '-7s' }} />
+        <div className="blob" style={{ width: '44vw', height: '44vw', bottom: '-12vh', right: '2vw', left: 'auto', background: 'oklch(0.66 0.15 210)', animationDelay: '-13s' }} />
+        <div className="blob" style={{ width: '34vw', height: '34vw', bottom: '-8vh', left: '-6vw', background: 'oklch(0.66 0.17 350)', animationDelay: '-3s' }} />
+      </div>
+
+      <div className="max-w-md w-full space-y-4 animate-rise">
         {/* Header */}
         <div className="text-center mb-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl mb-4 shadow-lg shadow-primary/30">
-            <Shield className="w-8 h-8 text-primary-foreground" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-gradient rounded-2xl mb-4 ring-brand">
+            <Shield className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-extrabold text-foreground mb-1">Chia Tiền Nhóm</h1>
+          <h1 className="text-3xl font-extrabold mb-1 text-brand-gradient">Chia Tiền Nhóm</h1>
           <p className="text-sm text-muted-foreground">
             {isFirstTime ? 'Thiết lập tài khoản quản trị' : 'Chọn chế độ truy cập'}
           </p>
         </div>
 
         {/* Admin Login Card */}
-        <Card className="border-border/60 shadow-xl">
+        <Card className="border-border/50 card-float bg-card/75 backdrop-blur-xl rounded-3xl">
           <CardHeader className="pb-4">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center shrink-0">
-                <Lock className="w-4 h-4 text-primary-foreground" />
+              <div className="w-9 h-9 bg-brand-gradient rounded-lg flex items-center justify-center shrink-0">
+                <Lock className="w-4 h-4 text-white" />
               </div>
               <div>
                 <h2 className="font-semibold text-base text-foreground">
@@ -106,7 +122,7 @@ export default function AuthModal({ onAdminLogin, onViewerMode, isFirstTime }: A
                 )}
               </div>
 
-              <Button type="submit" disabled={isLoading} className="w-full">
+              <Button type="submit" disabled={isLoading} className="w-full bg-brand-gradient text-white border-0 ring-brand hover:opacity-90">
                 <Lock className="w-4 h-4" />
                 {isLoading ? 'Đang xử lý...' : (isFirstTime ? 'Tạo tài khoản' : 'Đăng nhập quản lý')}
               </Button>
@@ -118,7 +134,7 @@ export default function AuthModal({ onAdminLogin, onViewerMode, isFirstTime }: A
         {!isFirstTime && (
           <button
             onClick={onViewerMode}
-            className="w-full px-5 py-4 bg-background rounded-xl border border-border hover:border-primary/50 hover:bg-accent transition-all shadow flex items-center gap-3 group"
+            className="w-full px-5 py-4 bg-card/70 backdrop-blur-xl rounded-2xl border border-border/50 card-float hover:border-primary/50 hover:bg-card transition-all flex items-center gap-3 group"
           >
             <div className="w-9 h-9 bg-secondary rounded-lg flex items-center justify-center shrink-0">
               <Users className="w-4 h-4 text-secondary-foreground" />

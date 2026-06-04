@@ -1,13 +1,14 @@
 'use client';
 
-import { Activity, PaymentQR } from '@/types';
+import { Activity, PaymentQR, ActivityCategory, CATEGORY_ICONS, CATEGORY_LABELS } from '@/types';
 import { useState } from 'react';
-import { Trash2, CheckCircle, Calendar, Users, X, DollarSign } from 'lucide-react';
+import { Trash2, CheckCircle, Calendar, Users, X } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { shareOf } from '@/lib/utils';
 
 interface ActivityListProps {
   activities: Activity[];
@@ -119,16 +120,26 @@ export default function ActivityList({ activities, onUpdate, onDelete, onDeleteA
               key={activity.id}
               onClick={() => openActivityDetail(activity)}
               className={`cursor-pointer transition-all hover:shadow-md border-border/60 ${
-                allPaid ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50' : 'hover:border-primary/40'
+                allPaid ? 'bg-credit-bg/40 border-credit/30' : 'hover:border-primary/40'
               }`}
             >
               <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  {/* Category avatar */}
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg"
+                    style={{
+                      backgroundColor: allPaid ? 'var(--credit-bg)' : 'var(--accent)',
+                    }}
+                    title={CATEGORY_LABELS[(activity.category ?? 'other') as ActivityCategory]}
+                  >
+                    {CATEGORY_ICONS[(activity.category ?? 'other') as ActivityCategory]}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
                       <h3 className="font-semibold text-base text-foreground truncate">{activity.title}</h3>
                       {allPaid && (
-                        <Badge className="bg-emerald-600 hover:bg-emerald-600 shrink-0 text-[10px] px-1.5 h-4">
+                        <Badge className="bg-credit hover:bg-credit text-white border-0 shrink-0 text-[10px] px-1.5 h-4">
                           <CheckCircle className="w-2.5 h-2.5 mr-0.5" />Xong
                         </Badge>
                       )}
@@ -144,7 +155,7 @@ export default function ActivityList({ activities, onUpdate, onDelete, onDeleteA
                       <span className="text-muted-foreground">Mỗi người: <span className="font-semibold text-primary">{activity.amountPerPerson.toLocaleString('vi-VN')}đ</span></span>
                     </div>
                   </div>
-                  <Badge variant={allPaid ? 'default' : 'secondary'} className={`shrink-0 text-xs font-bold ${allPaid ? 'bg-emerald-600 hover:bg-emerald-600' : ''}`}>
+                  <Badge variant={allPaid ? 'default' : 'secondary'} className={`shrink-0 text-xs font-bold ${allPaid ? 'bg-credit hover:bg-credit text-white border-0' : ''}`}>
                     {paidCount}/{totalCount}
                   </Badge>
                 </div>
@@ -159,16 +170,21 @@ export default function ActivityList({ activities, onUpdate, onDelete, onDeleteA
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 animate-fade-in" onClick={closeActivityDetail}>
           <div className="bg-background rounded-2xl shadow-2xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden border border-border" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
-            <div className="bg-primary p-4 sm:p-6 flex items-center justify-between sticky top-0 z-10">
-              <div className="flex-1 min-w-0 pr-2 sm:pr-4">
-                <h3 className="text-lg sm:text-2xl font-bold text-primary-foreground mb-1 sm:mb-2 break-words leading-tight">{selectedActivity.title}</h3>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-primary-foreground/80 text-xs sm:text-sm">
-                  <span className="flex items-center gap-1"><Calendar className="w-3 h-3 sm:w-4 sm:h-4" />{new Date(selectedActivity.date).toLocaleDateString('vi-VN')}</span>
-                  <span className="h-3 sm:h-4 w-px bg-primary-foreground/30" />
-                  <span className="flex items-center gap-1"><Users className="w-3 h-3 sm:w-4 sm:h-4" />{selectedActivity.participants.length} người</span>
+            <div className="bg-brand-gradient p-4 sm:p-6 flex items-center justify-between sticky top-0 z-10">
+              <div className="flex items-center gap-3 flex-1 min-w-0 pr-2 sm:pr-4">
+                <div className="w-11 h-11 rounded-2xl bg-white/15 flex items-center justify-center text-2xl shrink-0">
+                  {CATEGORY_ICONS[(selectedActivity.category ?? 'other') as ActivityCategory]}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-lg sm:text-2xl font-bold text-white mb-1 sm:mb-1.5 break-words leading-tight">{selectedActivity.title}</h3>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-white/80 text-xs sm:text-sm">
+                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3 sm:w-4 sm:h-4" />{new Date(selectedActivity.date).toLocaleDateString('vi-VN')}</span>
+                    <span className="h-3 sm:h-4 w-px bg-white/30" />
+                    <span className="flex items-center gap-1"><Users className="w-3 h-3 sm:w-4 sm:h-4" />{selectedActivity.participants.length} người</span>
+                  </div>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={closeActivityDetail} className="text-primary-foreground hover:bg-primary-foreground/20 shrink-0">
+              <Button variant="ghost" size="icon" onClick={closeActivityDetail} className="text-white hover:bg-white/20 shrink-0">
                 <X className="w-5 h-5" />
               </Button>
             </div>
@@ -183,7 +199,7 @@ export default function ActivityList({ activities, onUpdate, onDelete, onDeleteA
                     <p className="text-lg sm:text-2xl font-bold text-foreground break-words">{selectedActivity.totalAmount.toLocaleString('vi-VN')}đ</p>
                   </div>
                   <div className="p-3 sm:p-4 bg-primary/10 rounded-xl">
-                    <p className="text-xs text-primary mb-1">Mỗi người</p>
+                    <p className="text-xs text-primary mb-1">{selectedActivity.participants.every(p => Math.abs(shareOf(selectedActivity, p) - selectedActivity.amountPerPerson) < 1) ? 'Mỗi người' : 'TB / người'}</p>
                     <p className="text-lg sm:text-2xl font-bold text-primary break-words">{selectedActivity.amountPerPerson.toLocaleString('vi-VN')}đ</p>
                   </div>
                 </div>
@@ -201,7 +217,7 @@ export default function ActivityList({ activities, onUpdate, onDelete, onDeleteA
                         key={participant.name}
                         className={`flex items-center justify-between p-3 sm:p-4 rounded-xl border transition-colors ${
                           participant.paid
-                            ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50'
+                            ? 'bg-credit-bg border-credit/30'
                             : 'bg-muted/40 border-border'
                         }`}
                       >
@@ -211,10 +227,10 @@ export default function ActivityList({ activities, onUpdate, onDelete, onDeleteA
                               type="checkbox"
                               checked={participant.paid}
                               onChange={() => togglePayment(selectedActivity, participant.name)}
-                              className="w-4 h-4 sm:w-5 sm:h-5 accent-primary rounded cursor-pointer flex-shrink-0"
+                              className="w-4 h-4 sm:w-5 sm:h-5 accent-credit rounded cursor-pointer shrink-0"
                             />
                           ) : (
-                            <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${participant.paid ? 'bg-emerald-600 border-emerald-600' : 'border-muted-foreground/30'}`}>
+                            <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded border-2 flex items-center justify-center shrink-0 ${participant.paid ? 'bg-credit border-credit' : 'border-muted-foreground/30'}`}>
                               {participant.paid && <CheckCircle className="w-3 h-3 text-white" />}
                             </div>
                           )}
@@ -223,10 +239,10 @@ export default function ActivityList({ activities, onUpdate, onDelete, onDeleteA
                           </span>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className={`font-semibold text-sm sm:text-base ${participant.paid ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
-                            {selectedActivity.amountPerPerson.toLocaleString('vi-VN')}đ
+                          <span className={`font-semibold text-sm sm:text-base ${participant.paid ? 'text-credit' : 'text-foreground'}`}>
+                            {Math.round(shareOf(selectedActivity, participant)).toLocaleString('vi-VN')}đ
                           </span>
-                          {participant.paid && <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+                          {participant.paid && <CheckCircle className="w-4 h-4 text-credit" />}
                         </div>
                       </div>
                     ))}

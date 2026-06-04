@@ -476,8 +476,8 @@ export default function AddActivity({
                 className={cn(
                   "text-xs font-medium mt-1",
                   Math.abs(shareSum - 100) < 0.1
-                    ? "text-emerald-600"
-                    : "text-orange-500",
+                    ? "text-credit"
+                    : "text-debt",
                 )}
               >
                 Tổng %: {shareSum.toFixed(1)}%
@@ -489,8 +489,8 @@ export default function AddActivity({
                 className={cn(
                   "text-xs font-medium mt-1",
                   Math.abs(shareSum - total) < 1
-                    ? "text-emerald-600"
-                    : "text-orange-500",
+                    ? "text-credit"
+                    : "text-debt",
                 )}
               >
                 Tổng: {fmt(shareSum)}đ / {fmt(total)}đ
@@ -537,7 +537,7 @@ export default function AddActivity({
       {/* Submit */}
       <Button
         type="submit"
-        className="w-full h-11 gap-2 font-semibold text-sm"
+        className="w-full h-11 gap-2 font-semibold text-sm bg-brand-gradient text-white border-0 ring-brand hover:opacity-90 disabled:opacity-50"
         disabled={!canSubmit}
       >
         <CheckCircle className="w-4 h-4" />

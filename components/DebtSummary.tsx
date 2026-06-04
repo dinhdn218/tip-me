@@ -4,12 +4,14 @@ import { useState } from "react";
 import { Activity, DebtSummary as DebtSummaryType } from "@/types";
 import {
   TrendingUp,
-  TrendingDown,
   Users,
   Activity as ActivityIcon,
   CheckCircle,
   Clock,
   Check,
+  ChevronRight,
+  Calendar,
+  ListChecks,
 } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,16 +19,26 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { shareOf } from "@/lib/utils";
 
 interface DebtSummaryProps {
   activities: Activity[];
   onMarkAllPaid?: (personName: string) => void;
+  onUpdate?: (activity: Activity) => void;
   isAdmin?: boolean;
 }
 
 export default function DebtSummary({
   activities,
   onMarkAllPaid,
+  onUpdate,
   isAdmin,
 }: DebtSummaryProps) {
   const [confirmMarkPaid, setConfirmMarkPaid] = useState<{
@@ -38,6 +50,24 @@ export default function DebtSummary({
     name: "",
     amount: 0,
   });
+  const [dialogName, setDialogName] = useState<string | null>(null);
+
+  // Activities a given person participated in (most recent first)
+  const activitiesOf = (name: string) =>
+    activities
+      .filter((a) => a.participants.some((p) => p.name === name))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  // Toggle one person's paid status on a single activity
+  const togglePaidOn = (activity: Activity, name: string) => {
+    if (!onUpdate) return;
+    onUpdate({
+      ...activity,
+      participants: activity.participants.map((p) =>
+        p.name === name ? { ...p, paid: !p.paid } : p,
+      ),
+    });
+  };
 
   const handleMarkAllPaidClick = (name: string, amount: number) => {
     setConfirmMarkPaid({ show: true, name, amount });
@@ -60,10 +90,10 @@ export default function DebtSummary({
     activities.forEach((activity) => {
       activity.participants.forEach((participant) => {
         const current = debts.get(participant.name) || { total: 0, paid: 0 };
+        const share = shareOf(activity, participant);
         debts.set(participant.name, {
-          total: current.total + activity.amountPerPerson,
-          paid:
-            current.paid + (participant.paid ? activity.amountPerPerson : 0),
+          total: current.total + share,
+          paid: current.paid + (participant.paid ? share : 0),
         });
       });
     });
@@ -113,22 +143,22 @@ export default function DebtSummary({
             label: "Tổng chi phí",
             value: totalDebt,
             icon: TrendingUp,
-            color: "text-blue-600 dark:text-blue-400",
-            bg: "bg-blue-50 dark:bg-blue-950/50",
+            color: "text-primary",
+            bg: "bg-primary/10",
           },
           {
             label: "Đã thu",
             value: totalPaid,
             icon: CheckCircle,
-            color: "text-emerald-600 dark:text-emerald-400",
-            bg: "bg-emerald-50 dark:bg-emerald-950/50",
+            color: "text-credit",
+            bg: "bg-credit-bg",
           },
           {
             label: "Còn nợ",
             value: totalRemaining,
             icon: Clock,
-            color: "text-orange-600 dark:text-orange-400",
-            bg: "bg-orange-50 dark:bg-orange-950/50",
+            color: "text-debt",
+            bg: "bg-debt-bg",
           },
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <Card key={label} className="border-border/60 shadow-sm">
@@ -160,12 +190,12 @@ export default function DebtSummary({
             return (
               <Card
                 key={debt.name}
-                className={`border-border/60 shadow-sm ${isPaid ? "bg-emerald-50/30 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-800/50" : ""}`}
+                className={`border-border/60 shadow-sm ${isPaid ? "bg-credit-bg/40 border-credit/30" : ""}`}
               >
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex items-center justify-between mb-3 gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-semibold text-sm shrink-0">
+                      <div className="w-9 h-9 bg-brand-gradient rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0">
                         {debt.name.charAt(0).toUpperCase()}
                       </div>
                       <h4 className="font-semibold text-foreground truncate">
@@ -174,7 +204,7 @@ export default function DebtSummary({
                     </div>
                     <Badge
                       variant={isPaid ? "default" : "secondary"}
-                      className={`shrink-0 ${isPaid ? "bg-emerald-600 hover:bg-emerald-600" : "text-orange-600 border-orange-200 bg-orange-50 dark:bg-orange-950/20"}`}
+                      className={`shrink-0 ${isPaid ? "bg-credit hover:bg-credit text-white border-0" : "text-debt border-debt/30 bg-debt-bg"}`}
                     >
                       {isPaid ? (
                         <>
@@ -199,17 +229,17 @@ export default function DebtSummary({
                         {roundUpK(debt.totalDebt).toLocaleString("vi-VN")}đ
                       </span>
                     </div>
-                    <div className="flex justify-between items-center py-1.5 px-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg">
+                    <div className="flex justify-between items-center py-1.5 px-3 bg-credit-bg rounded-lg">
                       <span className="text-muted-foreground">Đã trả</span>
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      <span className="font-semibold text-credit">
                         {roundUpK(debt.paidAmount).toLocaleString("vi-VN")}đ
                       </span>
                     </div>
-                    <div className="flex justify-between items-center py-1.5 px-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-100 dark:border-orange-900/50">
+                    <div className="flex justify-between items-center py-1.5 px-3 bg-debt-bg rounded-lg border border-debt/20">
                       <span className="font-medium text-foreground">
                         Còn nợ
                       </span>
-                      <span className="font-bold text-orange-600 dark:text-orange-400 text-sm">
+                      <span className="font-bold text-debt text-sm">
                         {roundUpK(debt.remainingDebt).toLocaleString("vi-VN")}đ
                       </span>
                     </div>
@@ -226,7 +256,7 @@ export default function DebtSummary({
                   {isAdmin && debt.remainingDebt > 0 && (
                     <Button
                       size="sm"
-                      className="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 font-semibold"
+                      className="mt-3 w-full bg-credit hover:bg-credit/90 text-white gap-1.5 font-semibold"
                       onClick={() =>
                         handleMarkAllPaidClick(debt.name, debt.remainingDebt)
                       }
@@ -236,6 +266,18 @@ export default function DebtSummary({
                       {roundUpK(debt.remainingDebt).toLocaleString("vi-VN")}đ
                     </Button>
                   )}
+
+                  {/* Activities participated — opens in a dialog */}
+                  <button
+                    onClick={() => setDialogName(debt.name)}
+                    className="mt-3 w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-xs font-semibold text-foreground"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <ListChecks className="w-3.5 h-3.5 text-primary" />
+                      Hoạt động đã tham gia ({activitiesOf(debt.name).length})
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </button>
                 </CardContent>
               </Card>
             );
@@ -267,12 +309,12 @@ export default function DebtSummary({
               {
                 label: "Đã thanh toán đủ",
                 value: debts.filter((d) => d.remainingDebt === 0).length,
-                color: "text-emerald-600 dark:text-emerald-400",
+                color: "text-credit",
               },
               {
                 label: "Còn nợ",
                 value: debts.filter((d) => d.remainingDebt > 0).length,
-                color: "text-orange-600 dark:text-orange-400",
+                color: "text-debt",
               },
             ].map(({ label, value, color }) => (
               <div key={label} className="p-3 bg-background rounded-lg">
@@ -283,6 +325,92 @@ export default function DebtSummary({
           </div>
         </CardContent>
       </Card>
+
+      {/* Activities-participated dialog */}
+      <Dialog open={!!dialogName} onOpenChange={(o) => !o && setDialogName(null)}>
+        <DialogContent className="sm:max-w-md">
+          {dialogName && (() => {
+            const acts = activitiesOf(dialogName);
+            const info = debts.find((d) => d.name === dialogName);
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2.5">
+                    <span className="w-9 h-9 rounded-full bg-brand-gradient flex items-center justify-center text-white font-bold text-sm shrink-0">
+                      {dialogName.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate">{dialogName}</span>
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        {acts.length} hoạt động đã tham gia
+                      </span>
+                    </span>
+                  </DialogTitle>
+                  {info && (
+                    <DialogDescription className="flex items-center gap-3 pt-1">
+                      <span>
+                        Còn nợ{" "}
+                        <span className="font-bold text-debt">
+                          {roundUpK(info.remainingDebt).toLocaleString("vi-VN")}đ
+                        </span>
+                      </span>
+                      <span className="text-border">·</span>
+                      <span>
+                        Đã trả{" "}
+                        <span className="font-bold text-credit">
+                          {roundUpK(info.paidAmount).toLocaleString("vi-VN")}đ
+                        </span>
+                      </span>
+                    </DialogDescription>
+                  )}
+                </DialogHeader>
+
+                <div className="space-y-1.5 max-h-[60vh] overflow-y-auto -mx-1 px-1">
+                  {acts.map((a) => {
+                    const part = a.participants.find((p) => p.name === dialogName);
+                    const paid = !!part?.paid;
+                    const share = part ? shareOf(a, part) : a.amountPerPerson;
+                    return (
+                      <div
+                        key={a.id}
+                        className={`flex items-center gap-2.5 p-3 rounded-xl border ${paid ? "bg-credit-bg border-credit/30" : "bg-muted/40 border-border"}`}
+                      >
+                        <button
+                          type="button"
+                          disabled={!isAdmin || !onUpdate}
+                          onClick={() => togglePaidOn(a, dialogName)}
+                          aria-label={paid ? "Đánh dấu chưa trả" : "Đánh dấu đã trả"}
+                          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${paid ? "bg-credit border-credit" : "border-muted-foreground/30"} ${isAdmin && onUpdate ? "cursor-pointer hover:border-credit" : "cursor-default"}`}
+                        >
+                          {paid && <Check className="w-3 h-3 text-white" />}
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-medium truncate ${paid ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                            {a.title}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                            <Calendar className="w-2.5 h-2.5" />
+                            {new Date(a.date).toLocaleDateString("vi-VN")}
+                          </p>
+                        </div>
+                        <span className={`text-sm font-semibold shrink-0 ${paid ? "text-credit" : "text-debt"}`}>
+                          {roundUpK(share).toLocaleString("vi-VN")}đ
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {isAdmin && onUpdate && acts.length > 0 && (
+                  <p className="text-[11px] text-muted-foreground text-center">
+                    Bấm vào ô vuông để đánh dấu đã/chưa trả từng hoạt động
+                  </p>
+                )}
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Confirm Mark Paid Dialog */}
       {confirmMarkPaid.show && (

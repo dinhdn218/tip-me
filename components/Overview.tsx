@@ -3,7 +3,8 @@
 import { useRef } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import { Activity, CATEGORY_ICONS } from "@/types";
+import { Activity, ActivityCategory, CATEGORY_ICONS, CATEGORY_LABELS } from "@/types";
+import { shareOf } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,7 +81,10 @@ export default function Overview({
   const totalSpent = activities.reduce((s, a) => s + a.totalAmount, 0);
   const totalPaid = activities.reduce(
     (s, a) =>
-      s + a.participants.filter((p) => p.paid).length * a.amountPerPerson,
+      s +
+      a.participants
+        .filter((p) => p.paid)
+        .reduce((ss, p) => ss + shareOf(a, p), 0),
     0,
   );
   const totalUnpaid = totalSpent - totalPaid;
@@ -95,9 +99,10 @@ export default function Overview({
   activities.forEach((a) =>
     a.participants.forEach((p) => {
       const c = personMap.get(p.name) ?? { paid: 0, total: 0 };
+      const share = shareOf(a, p);
       personMap.set(p.name, {
-        total: c.total + a.amountPerPerson,
-        paid: c.paid + (p.paid ? a.amountPerPerson : 0),
+        total: c.total + share,
+        paid: c.paid + (p.paid ? share : 0),
       });
     }),
   );
@@ -111,6 +116,24 @@ export default function Overview({
   const paidPersons = persons.filter(([, v]) => v.paid >= v.total).length;
 
   const recentActivities = activities.slice(0, 4);
+
+  // Spending breakdown by category
+  const CATEGORY_COLORS: Record<ActivityCategory, string> = {
+    dining: "var(--chart-1)",
+    travel: "var(--chart-2)",
+    bills: "var(--chart-3)",
+    entertainment: "var(--chart-4)",
+    groceries: "var(--chart-5)",
+    other: "var(--muted-foreground)",
+  };
+  const catMap = new Map<ActivityCategory, number>();
+  activities.forEach((a) => {
+    const c = (a.category ?? "other") as ActivityCategory;
+    catMap.set(c, (catMap.get(c) ?? 0) + a.totalAmount);
+  });
+  const catBreakdown = Array.from(catMap.entries())
+    .map(([cat, amount]) => ({ cat, amount, pct: totalSpent > 0 ? (amount / totalSpent) * 100 : 0 }))
+    .sort((a, b) => b.amount - a.amount);
 
   // ── GSAP stagger reveal ─────────────────────────────────────────────────────
   useGSAP(
@@ -162,7 +185,7 @@ export default function Overview({
   return (
     <div ref={gridRef} className="grid grid-cols-12 gap-3 sm:gap-4">
       {/* ── Hero Balance ──────────────────────────────────────────────────── */}
-      <Card className="bento-card col-span-12 lg:col-span-8 bg-primary text-primary-foreground border-0 overflow-hidden relative">
+      <Card className="bento-card col-span-12 lg:col-span-8 bg-brand-gradient text-white border-0 overflow-hidden relative">
         {/* Decorative blobs */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full bg-white/10 blur-3xl" />
@@ -450,6 +473,48 @@ export default function Overview({
           )}
         </CardContent>
       </Card>
+
+      {/* ── Category Breakdown ────────────────────────────────────────────── */}
+      {catBreakdown.length > 0 && (
+        <Card className="bento-card col-span-12">
+          <CardHeader className="pb-2 pt-4 px-5">
+            <CardTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+              <Wallet className="w-3.5 h-3.5" /> Chi tiêu theo danh mục
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-4 space-y-3">
+            {/* Stacked bar */}
+            <div className="h-3 rounded-full overflow-hidden flex bg-muted">
+              {catBreakdown.map(({ cat, pct }) => (
+                <div
+                  key={cat}
+                  className="h-full first:rounded-l-full last:rounded-r-full"
+                  style={{ width: `${pct}%`, backgroundColor: CATEGORY_COLORS[cat] }}
+                  title={`${CATEGORY_LABELS[cat]} · ${Math.round(pct)}%`}
+                />
+              ))}
+            </div>
+            {/* Legend */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">
+              {catBreakdown.map(({ cat, amount, pct }) => (
+                <div key={cat} className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: CATEGORY_COLORS[cat] }}
+                  />
+                  <span className="text-sm shrink-0">{CATEGORY_ICONS[cat]}</span>
+                  <span className="text-xs font-medium text-foreground truncate flex-1">
+                    {CATEGORY_LABELS[cat]}
+                  </span>
+                  <span className="text-xs font-semibold text-muted-foreground shrink-0 tabular-nums">
+                    {Math.round(pct)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Recent Activities ─────────────────────────────────────────────── */}
       <Card className="bento-card col-span-12">

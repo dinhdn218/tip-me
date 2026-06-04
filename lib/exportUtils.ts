@@ -1,4 +1,5 @@
 import { Activity } from '@/types';
+import { shareOf } from '@/lib/utils';
 
 export function exportToCSV(activities: Activity[]): void {
   if (activities.length === 0) {
@@ -16,7 +17,7 @@ export function exportToCSV(activities: Activity[]): void {
       new Date(activity.date).toLocaleDateString('vi-VN'),
       activity.totalAmount.toLocaleString('vi-VN'),
       participant.name,
-      activity.amountPerPerson.toLocaleString('vi-VN'),
+      Math.round(shareOf(activity, participant)).toLocaleString('vi-VN'),
       participant.paid ? 'Đã thanh toán' : 'Chưa thanh toán'
     ])
   );
@@ -89,7 +90,7 @@ export function exportToExcel(activities: Activity[]): void {
         new Date(activity.date).toLocaleDateString('vi-VN'),
         activity.totalAmount.toLocaleString('vi-VN') + ' đ',
         participant.name,
-        activity.amountPerPerson.toLocaleString('vi-VN') + ' đ',
+        Math.round(shareOf(activity, participant)).toLocaleString('vi-VN') + ' đ',
         participant.paid ? 'Đã thanh toán' : 'Chưa thanh toán'
       ].forEach(text => {
         const cell = row.insertCell();

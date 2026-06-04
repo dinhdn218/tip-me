@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, X, Filter, Calendar } from 'lucide-react';
 import { Activity, ActivityCategory, CATEGORY_LABELS, CATEGORY_ICONS } from '@/types';
 import { Input } from '@/components/ui/input';
@@ -11,24 +11,26 @@ import { cn } from '@/lib/utils';
 interface SearchFilterProps {
   activities: Activity[];
   onFilteredResults: (filtered: Activity[]) => void;
+  /** Optional controlled search term (e.g. driven by the global header search). */
+  searchTerm?: string;
+  onSearchTermChange?: (value: string) => void;
 }
 
 const CATEGORIES: ActivityCategory[] = ['dining', 'travel', 'bills', 'entertainment', 'groceries', 'other'];
 
-export default function SearchFilter({ activities, onFilteredResults }: SearchFilterProps) {
-  const [searchTerm, setSearchTerm] = useState('');
+export default function SearchFilter({ activities, onFilteredResults, searchTerm: controlledSearch, onSearchTermChange }: SearchFilterProps) {
+  const [internalSearch, setInternalSearch] = useState('');
+  const searchTerm = controlledSearch ?? internalSearch;
   const [filterPaid, setFilterPaid] = useState<'all' | 'paid' | 'unpaid'>('all');
   const [filterDate, setFilterDate] = useState('');
   const [filterCategory, setFilterCategory] = useState<ActivityCategory | 'all'>('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  const applyFilters = (
-    search: string,
-    paid: typeof filterPaid,
-    date: string,
-    category: typeof filterCategory,
-  ) => {
+  // Re-apply filters whenever any input or the source list changes.
+  // Covers both internal changes and external (header-driven) search updates.
+  useEffect(() => {
     let filtered = [...activities];
+    const search = searchTerm;
 
     if (search.trim()) {
       filtered = filtered.filter(act =>
@@ -37,49 +39,40 @@ export default function SearchFilter({ activities, onFilteredResults }: SearchFi
       );
     }
 
-    if (paid === 'paid') {
+    if (filterPaid === 'paid') {
       filtered = filtered.filter(act => act.participants.every(p => p.paid));
-    } else if (paid === 'unpaid') {
+    } else if (filterPaid === 'unpaid') {
       filtered = filtered.filter(act => act.participants.some(p => !p.paid));
     }
 
-    if (date) {
+    if (filterDate) {
       filtered = filtered.filter(act => {
         const actDate = new Date(act.date).toISOString().split('T')[0];
-        return actDate === date;
+        return actDate === filterDate;
       });
     }
 
-    if (category !== 'all') {
-      filtered = filtered.filter(act => act.category === category);
+    if (filterCategory !== 'all') {
+      filtered = filtered.filter(act => act.category === filterCategory);
     }
 
     onFilteredResults(filtered);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activities, searchTerm, filterPaid, filterDate, filterCategory]);
 
   const handleSearchChange = (value: string) => {
-    setSearchTerm(value);
-    applyFilters(value, filterPaid, filterDate, filterCategory);
+    if (onSearchTermChange) onSearchTermChange(value);
+    else setInternalSearch(value);
   };
-  const handlePaidFilterChange = (value: typeof filterPaid) => {
-    setFilterPaid(value);
-    applyFilters(searchTerm, value, filterDate, filterCategory);
-  };
-  const handleDateFilterChange = (value: string) => {
-    setFilterDate(value);
-    applyFilters(searchTerm, filterPaid, value, filterCategory);
-  };
-  const handleCategoryChange = (value: typeof filterCategory) => {
-    setFilterCategory(value);
-    applyFilters(searchTerm, filterPaid, filterDate, value);
-  };
+  const handlePaidFilterChange = (value: typeof filterPaid) => setFilterPaid(value);
+  const handleDateFilterChange = (value: string) => setFilterDate(value);
+  const handleCategoryChange = (value: typeof filterCategory) => setFilterCategory(value);
 
   const clearFilters = () => {
-    setSearchTerm('');
+    handleSearchChange('');
     setFilterPaid('all');
     setFilterDate('');
     setFilterCategory('all');
-    onFilteredResults(activities);
   };
 
   const hasActiveFilters = searchTerm || filterPaid !== 'all' || filterDate || filterCategory !== 'all';
@@ -161,9 +154,9 @@ export default function SearchFilter({ activities, onFilteredResults }: SearchFi
                     'flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors',
                     filterPaid === val
                       ? val === 'paid'
-                        ? 'bg-emerald-600 text-white'
+                        ? 'bg-credit text-white'
                         : val === 'unpaid'
-                        ? 'bg-orange-600 text-white'
+                        ? 'bg-debt text-white'
                         : 'bg-primary text-primary-foreground'
                       : 'bg-background text-muted-foreground hover:text-foreground hover:bg-accent border border-border',
                   )}

@@ -170,8 +170,8 @@ export default function QuickSplitWidget({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-primary" />
+            <div className="w-8 h-8 rounded-lg bg-brand-gradient flex items-center justify-center ring-brand">
+              <Zap className="w-4 h-4 text-white" />
             </div>
             <div>
               <p className="font-semibold text-sm text-foreground">
@@ -367,8 +367,8 @@ export default function QuickSplitWidget({
                 className={cn(
                   "text-[11px] mt-1.5",
                   Math.abs(shareSum - 100) < 0.1
-                    ? "text-emerald-600"
-                    : "text-orange-500",
+                    ? "text-credit"
+                    : "text-debt",
                 )}
               >
                 Tổng %: {shareSum.toFixed(1)}%{" "}
@@ -380,8 +380,8 @@ export default function QuickSplitWidget({
                 className={cn(
                   "text-[11px] mt-1.5",
                   Math.abs(shareSum - total) < 0.5
-                    ? "text-emerald-600"
-                    : "text-orange-500",
+                    ? "text-credit"
+                    : "text-debt",
                 )}
               >
                 Tổng: {fmt(shareSum)}đ / {fmt(total)}đ{" "}
@@ -416,7 +416,7 @@ export default function QuickSplitWidget({
         {/* Footer CTA */}
         <div className="px-5 py-4 border-t border-border shrink-0">
           <Button
-            className="w-full gap-2 font-semibold"
+            className="w-full gap-2 font-semibold bg-brand-gradient text-white border-0 ring-brand hover:opacity-90 disabled:opacity-50"
             disabled={!canSubmit}
             onClick={handleSubmit}
           >

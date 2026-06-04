@@ -78,8 +78,8 @@ export default function QRCodeManager({ paymentQR, onUpdate, isAdmin }: QRCodeMa
     return (
       <div className="space-y-5 max-w-sm mx-auto">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-primary rounded-xl mb-3">
-            <QrCode className="w-6 h-6 text-primary-foreground" />
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-brand-gradient rounded-xl mb-3 ring-brand">
+            <QrCode className="w-6 h-6 text-white" />
           </div>
           <h3 className="text-lg font-bold text-foreground">Thông tin thanh toán</h3>
           <p className="text-sm text-muted-foreground mt-0.5">Quét mã QR hoặc chuyển khoản theo thông tin bên dưới</p>
@@ -118,7 +118,7 @@ export default function QRCodeManager({ paymentQR, onUpdate, isAdmin }: QRCodeMa
                     className="h-8 w-8 shrink-0"
                     onClick={() => copyToClipboard(value!, key)}
                   >
-                    {copied === key ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copied === key ? <Check className="w-3.5 h-3.5 text-credit" /> : <Copy className="w-3.5 h-3.5" />}
                   </Button>
                 </div>
               ))}
@@ -133,8 +133,8 @@ export default function QRCodeManager({ paymentQR, onUpdate, isAdmin }: QRCodeMa
   return (
     <div className="space-y-5 max-w-lg mx-auto">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shrink-0">
-          <QrCode className="w-5 h-5 text-primary-foreground" />
+        <div className="w-10 h-10 bg-brand-gradient rounded-xl flex items-center justify-center shrink-0 ring-brand">
+          <QrCode className="w-5 h-5 text-white" />
         </div>
         <div>
           <h3 className="font-bold text-foreground">Quản lý QR Code thanh toán</h3>
@@ -207,7 +207,7 @@ export default function QRCodeManager({ paymentQR, onUpdate, isAdmin }: QRCodeMa
 
       {/* Action Buttons */}
       <div className="flex gap-2">
-        <Button onClick={handleSave} className="flex-1 gap-2">
+        <Button onClick={handleSave} className="flex-1 gap-2 bg-brand-gradient text-white border-0 ring-brand hover:opacity-90">
           <Save className="w-4 h-4" />
           Lưu thông tin
         </Button>
@@ -220,9 +220,9 @@ export default function QRCodeManager({ paymentQR, onUpdate, isAdmin }: QRCodeMa
       </div>
 
       {paymentQR && (
-        <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
-          <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
+        <div className="flex items-center gap-2 p-3 bg-credit-bg rounded-lg border border-credit/30">
+          <CheckCircle className="w-4 h-4 text-credit shrink-0" />
+          <p className="text-sm text-credit-foreground font-medium">
             Thông tin thanh toán đã được lưu thành công!
           </p>
         </div>
