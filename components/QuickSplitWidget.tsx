@@ -10,6 +10,7 @@ import {
   DollarSign,
   Users,
   Zap,
+  Calendar,
 } from "lucide-react";
 import {
   Activity,
@@ -56,6 +57,10 @@ export default function QuickSplitWidget({
 }: QuickSplitWidgetProps) {
   const [title, setTitle] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
+  const [displayAmount, setDisplayAmount] = useState("");
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
   const [category, setCategory] = useState<ActivityCategory>("dining");
   const [splitMode, setSplitMode] = useState<SplitMode>("equal");
   const [participants, setParticipants] = useState<ParticipantEntry[]>([]);
@@ -66,12 +71,24 @@ export default function QuickSplitWidget({
     if (open) {
       setTitle("");
       setTotalAmount("");
+      setDisplayAmount("");
+      setSelectedDate(new Date().toISOString().split("T")[0]);
       setCategory("dining");
       setSplitMode("equal");
       setParticipants([]);
       setNewName("");
     }
   }, [open]);
+
+  const formatCurrency = (value: string) => {
+    const n = value.replace(/\D/g, "");
+    return n ? new Intl.NumberFormat("vi-VN").format(parseInt(n)) : "";
+  };
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const numeric = e.target.value.replace(/\D/g, "");
+    setTotalAmount(numeric);
+    setDisplayAmount(formatCurrency(numeric));
+  };
 
   const total = parseFloat(totalAmount) || 0;
   const count = participants.length;
@@ -100,7 +117,7 @@ export default function QuickSplitWidget({
   const exactValid = splitMode !== "exact" || Math.abs(shareSum - total) < 0.5;
   const pctValid = splitMode !== "percentage" || Math.abs(shareSum - 100) < 0.1;
   const canSubmit =
-    title.trim() && total > 0 && count >= 2 && exactValid && pctValid;
+    title.trim() && total > 0 && count >= 1 && exactValid && pctValid;
 
   const addParticipant = (name: string) => {
     const trimmed = name.trim();
@@ -138,7 +155,7 @@ export default function QuickSplitWidget({
       title: title.trim(),
       totalAmount: total,
       amountPerPerson: pv.length > 0 ? total / pv.length : total / count,
-      date: new Date().toISOString(),
+      date: new Date(selectedDate).toISOString(),
       category,
       participants: participants.map((p) => {
         const found = pv.find((x) => x.name === p.name);
@@ -165,6 +182,7 @@ export default function QuickSplitWidget({
     >
       <SheetContent
         side="right"
+        showCloseButton={false}
         className="w-full sm:max-w-md flex flex-col p-0 gap-0"
       >
         {/* Header */}
@@ -175,7 +193,7 @@ export default function QuickSplitWidget({
             </div>
             <div>
               <p className="font-semibold text-sm text-foreground">
-                Thêm nhanh chi phí
+                Thêm chi phí
               </p>
               <p className="text-[11px] text-muted-foreground">
                 Chia bill thông minh
@@ -206,20 +224,34 @@ export default function QuickSplitWidget({
             />
           </div>
 
-          {/* Amount */}
-          <div>
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
-              Tổng số tiền (đ)
-            </Label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          {/* Amount + Date */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                Tổng tiền (đ)
+              </Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="500,000"
+                  value={displayAmount}
+                  onChange={handleAmountChange}
+                  className="pl-8 h-9 font-semibold"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1">
+                <Calendar className="w-3 h-3" /> Ngày
+              </Label>
               <Input
-                type="number"
-                placeholder="0"
-                value={totalAmount}
-                onChange={(e) => setTotalAmount(e.target.value)}
-                className="pl-8 h-9"
-                min={0}
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                max={new Date().toISOString().split("T")[0]}
+                className="h-9"
               />
             </div>
           </div>
@@ -424,9 +456,9 @@ export default function QuickSplitWidget({
             Thêm chi phí
             {total > 0 && ` — ${fmt(total)}đ`}
           </Button>
-          {count < 2 && (
+          {count < 1 && (
             <p className="text-center text-[11px] text-muted-foreground mt-2">
-              Cần ít nhất 2 người tham gia
+              Cần ít nhất 1 người tham gia
             </p>
           )}
         </div>

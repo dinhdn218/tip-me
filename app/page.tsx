@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { Activity, PaymentQR, AdminConfig } from "@/types";
 import ActivityList from "@/components/ActivityList";
-import AddActivity from "@/components/AddActivity";
 import DebtSummary from "@/components/DebtSummary";
 import QRCodeManager from "@/components/QRCodeManager";
 import AuthModal from "@/components/AuthModal";
@@ -12,8 +11,7 @@ import SearchFilter from "@/components/SearchFilter";
 import TopBar from "@/components/TopBar";
 import NavDock from "@/components/NavDock";
 import QuickSplitWidget from "@/components/QuickSplitWidget";
-import { Plus, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import * as firebaseService from "@/lib/firebaseService";
 import toast, { Toaster } from "react-hot-toast";
 import { hashPin, verifyPin } from "@/lib/securityUtils";
@@ -22,7 +20,7 @@ export default function Home() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [paymentQR, setPaymentQR] = useState<PaymentQR | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "overview" | "add" | "list" | "summary" | "qr"
+    "overview" | "list" | "summary" | "qr"
   >("overview");
   const [isConnected, setIsConnected] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -260,10 +258,6 @@ export default function Home() {
       title: "Tổng quan",
       subtitle: "Bức tranh chi tiêu & công nợ của cả nhóm",
     },
-    add: {
-      title: "Thêm hoạt động",
-      subtitle: "Tạo khoản chi tiêu và chia tiền chi tiết",
-    },
     list: {
       title: "Hoạt động",
       subtitle: "Tất cả các khoản chi tiêu của nhóm",
@@ -398,23 +392,13 @@ export default function Home() {
       <main className="min-h-screen pt-20 pb-32">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           {/* Page heading */}
-          <div className="mb-5 sm:mb-7 flex items-end justify-between gap-3">
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                {meta.title}
-              </h1>
-              <p className="text-muted-foreground text-sm mt-1">
-                {meta.subtitle}
-              </p>
-            </div>
-            {isAdmin && activeTab !== "add" && (
-              <Button
-                onClick={() => setShowQuickSplit(true)}
-                className="hidden sm:flex gap-1.5 bg-brand-gradient text-white border-0 ring-brand hover:opacity-90 rounded-full h-10 px-5 font-semibold shrink-0"
-              >
-                <Plus className="w-4 h-4" /> Thêm nhanh
-              </Button>
-            )}
+          <div className="mb-5 sm:mb-7">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+              {meta.title}
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              {meta.subtitle}
+            </p>
           </div>
 
           <div key={activeTab} className="animate-rise">
@@ -425,15 +409,6 @@ export default function Home() {
                 onNavigate={(tab) => setActiveTab(tab as typeof activeTab)}
                 onQuickAdd={() => setShowQuickSplit(true)}
               />
-            )}
-
-            {activeTab === "add" && isAdmin && (
-              <div className="max-w-3xl mx-auto bg-card/70 backdrop-blur rounded-3xl border border-border/60 card-float p-5 sm:p-7">
-                <AddActivity
-                  onAdd={addActivity}
-                  existingParticipants={getAllParticipants()}
-                />
-              </div>
             )}
 
             {activeTab === "list" && (

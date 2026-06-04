@@ -6,12 +6,10 @@ import { useGSAP } from "@gsap/react";
 import { Activity, ActivityCategory, CATEGORY_ICONS, CATEGORY_LABELS } from "@/types";
 import { shareOf } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   TrendingUp,
-  Users,
   Calendar,
   CheckCircle,
   Clock,
@@ -19,7 +17,6 @@ import {
   ChevronRight,
   BarChart3,
   Wallet,
-  Zap,
   Trophy,
 } from "lucide-react";
 
@@ -164,18 +161,12 @@ export default function Overview({
           Thêm hoạt động đầu tiên để bắt đầu theo dõi chi phí nhóm
         </p>
         {isAdmin && (
-          <div className="flex gap-2">
-            <Button onClick={onQuickAdd} className="gap-2">
-              <Zap className="w-4 h-4" /> Thêm nhanh
-            </Button>
-            <Button
-              onClick={() => onNavigate?.("add")}
-              variant="outline"
-              className="gap-2"
-            >
-              <Plus className="w-4 h-4" /> Thêm hoạt động
-            </Button>
-          </div>
+          <Button
+            onClick={onQuickAdd}
+            className="gap-2 bg-brand-gradient text-white border-0 ring-brand hover:opacity-90"
+          >
+            <Plus className="w-4 h-4" /> Thêm chi phí
+          </Button>
         )}
       </div>
     );
@@ -586,20 +577,15 @@ export default function Overview({
             })}
           </div>
 
-          {isAdmin && (
-            <div className="flex gap-2 mt-3">
-              <Button onClick={onQuickAdd} size="sm" className="flex-1 gap-1.5">
-                <Zap className="w-3.5 h-3.5" /> Thêm nhanh
-              </Button>
-              <Button
-                onClick={() => onNavigate?.("list")}
-                variant="outline"
-                size="sm"
-                className="flex-1 gap-1.5"
-              >
-                <ChevronRight className="w-3.5 h-3.5" /> Chi tiết
-              </Button>
-            </div>
+          {activities.length > 4 && (
+            <Button
+              onClick={() => onNavigate?.("list")}
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5 mt-3"
+            >
+              <ChevronRight className="w-3.5 h-3.5" /> Xem tất cả hoạt động
+            </Button>
           )}
         </CardContent>
       </Card>
