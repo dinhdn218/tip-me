@@ -227,10 +227,8 @@ export default function TopBar({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Export (sm+) */}
-        <div className="hidden sm:block">
-          <ExportButton activities={activities} />
-        </div>
+        {/* Export */}
+        <ExportButton activities={activities} />
 
         {/* User */}
         <DropdownMenu>

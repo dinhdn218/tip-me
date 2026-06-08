@@ -1,139 +1,207 @@
-import { Activity } from '@/types';
+import { Activity, ActivityCategory, CATEGORY_LABELS } from '@/types';
 import { shareOf } from '@/lib/utils';
 
-export function exportToCSV(activities: Activity[]): void {
-  if (activities.length === 0) {
-    alert('Không có dữ liệu để xuất!');
-    return;
-  }
-
-  // CSV Header
-  const headers = ['Hoạt động', 'Ngày', 'Tổng tiền', 'Người tham gia', 'Số tiền/người', 'Đã thanh toán'];
-  
-  // CSV Rows
-  const rows = activities.flatMap(activity => 
-    activity.participants.map(participant => [
-      activity.title,
-      new Date(activity.date).toLocaleDateString('vi-VN'),
-      activity.totalAmount.toLocaleString('vi-VN'),
-      participant.name,
-      Math.round(shareOf(activity, participant)).toLocaleString('vi-VN'),
-      participant.paid ? 'Đã thanh toán' : 'Chưa thanh toán'
-    ])
-  );
-
-  // Combine headers and rows
-  const csvContent = [
-    headers.join(','),
-    ...rows.map(row => row.join(','))
-  ].join('\n');
-
-  // Add BOM for proper UTF-8 encoding in Excel
-  const BOM = '\uFEFF';
-  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-  
-  // Create download link
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', `chi-tien-nhom-${new Date().toISOString().split('T')[0]}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+// ── Outstanding-debt report model (chỉ khoản CHƯA TRẢ) ───────────────────────
+interface UnpaidActivity {
+  title: string;
+  date: string;
+  category: string;
+  amount: number;
+}
+interface PersonOwed {
+  name: string;
+  activities: UnpaidActivity[]; // chỉ các hoạt động người này CHƯA trả
+  owed: number; // tổng còn nợ
 }
 
-export function exportToJSON(activities: Activity[]): void {
-  if (activities.length === 0) {
-    alert('Không có dữ liệu để xuất!');
-    return;
-  }
+const fmtDate = (d: string) => new Date(d).toLocaleDateString('vi-VN');
+const fmtVN = (n: number) => Math.round(n).toLocaleString('vi-VN');
+const catLabel = (c?: ActivityCategory) => CATEGORY_LABELS[(c ?? 'other') as ActivityCategory];
 
-  const dataStr = JSON.stringify(activities, null, 2);
-  const blob = new Blob([dataStr], { type: 'application/json' });
-  
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', `chi-tien-nhom-${new Date().toISOString().split('T')[0]}.json`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-export function exportToExcel(activities: Activity[]): void {
-  if (activities.length === 0) {
-    alert('Không có dữ liệu để xuất!');
-    return;
-  }
-
-  // Create HTML table
-  const table = document.createElement('table');
-  
-  // Header
-  const thead = table.createTHead();
-  const headerRow = thead.insertRow();
-  ['Hoạt động', 'Ngày', 'Tổng tiền', 'Người tham gia', 'Số tiền/người', 'Đã thanh toán'].forEach(text => {
-    const th = document.createElement('th');
-    th.textContent = text;
-    headerRow.appendChild(th);
-  });
-
-  // Body
-  const tbody = table.createTBody();
-  activities.forEach(activity => {
-    activity.participants.forEach(participant => {
-      const row = tbody.insertRow();
-      [
-        activity.title,
-        new Date(activity.date).toLocaleDateString('vi-VN'),
-        activity.totalAmount.toLocaleString('vi-VN') + ' đ',
-        participant.name,
-        Math.round(shareOf(activity, participant)).toLocaleString('vi-VN') + ' đ',
-        participant.paid ? 'Đã thanh toán' : 'Chưa thanh toán'
-      ].forEach(text => {
-        const cell = row.insertCell();
-        cell.textContent = text;
+/** Chỉ lấy các khoản CHƯA trả, gom theo người, bỏ người đã thanh toán hết. */
+function buildUnpaidReport(activities: Activity[]): PersonOwed[] {
+  const map = new Map<string, PersonOwed>();
+  activities.forEach((a) => {
+    a.participants.forEach((p) => {
+      if (p.paid) return; // chỉ khoản chưa trả
+      const r = map.get(p.name) ?? { name: p.name, activities: [], owed: 0 };
+      const amount = shareOf(a, p);
+      r.activities.push({
+        title: a.title,
+        date: a.date,
+        category: catLabel(a.category),
+        amount,
       });
+      r.owed += amount;
+      map.set(p.name, r);
     });
   });
+  return Array.from(map.values())
+    .filter((r) => r.owed > 0) // chỉ người còn nợ
+    .map((r) => ({
+      ...r,
+      activities: r.activities.sort(
+        (x, y) => new Date(y.date).getTime() - new Date(x.date).getTime(),
+      ),
+    }))
+    .sort((a, b) => b.owed - a.owed);
+}
 
-  // Convert to Excel format
+function triggerDownload(blob: Blob, filename: string) {
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+const today = () => new Date().toISOString().split('T')[0];
+
+// Escape a CSV cell: quote when it contains a comma, quote or newline.
+function csvCell(value: string | number): string {
+  const s = String(value);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+const NO_DEBT_MSG = 'Tất cả đã thanh toán — không có khoản nợ nào để xuất!';
+
+// ── CSV ──────────────────────────────────────────────────────────────────────
+export function exportToCSV(activities: Activity[]): void {
+  const report = buildUnpaidReport(activities);
+  if (report.length === 0) {
+    alert(NO_DEBT_MSG);
+    return;
+  }
+  const headers = ['Người', 'Hoạt động chưa trả', 'Ngày', 'Danh mục', 'Số tiền (đ)'];
+  const lines: string[][] = [headers];
+
+  report.forEach((person) => {
+    person.activities.forEach((act) => {
+      lines.push([
+        person.name,
+        act.title,
+        fmtDate(act.date),
+        act.category,
+        String(Math.round(act.amount)),
+      ]);
+    });
+    lines.push([person.name, 'TỔNG CÒN NỢ', '', '', String(Math.round(person.owed))]);
+  });
+
+  const grandOwed = report.reduce((s, p) => s + p.owed, 0);
+  lines.push(['TẤT CẢ', 'TỔNG NỢ TOÀN NHÓM', '', '', String(Math.round(grandOwed))]);
+
+  const csv = lines.map((row) => row.map(csvCell).join(',')).join('\n');
+  const BOM = '﻿';
+  triggerDownload(
+    new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' }),
+    `cong-no-chua-thu-${today()}.csv`,
+  );
+}
+
+// ── JSON ─────────────────────────────────────────────────────────────────────
+export function exportToJSON(activities: Activity[]): void {
+  const report = buildUnpaidReport(activities);
+  if (report.length === 0) {
+    alert(NO_DEBT_MSG);
+    return;
+  }
+  const data = report.map((p) => ({
+    name: p.name,
+    owed: Math.round(p.owed),
+    unpaidActivities: p.activities.map((a) => ({
+      title: a.title,
+      date: a.date,
+      category: a.category,
+      amount: Math.round(a.amount),
+    })),
+  }));
+  triggerDownload(
+    new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
+    `cong-no-chua-thu-${today()}.json`,
+  );
+}
+
+// ── Excel (.xls via HTML table) ──────────────────────────────────────────────
+export function exportToExcel(activities: Activity[]): void {
+  const report = buildUnpaidReport(activities);
+  if (report.length === 0) {
+    alert(NO_DEBT_MSG);
+    return;
+  }
+  const esc = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const headerCells = ['Người', 'Hoạt động chưa trả', 'Ngày', 'Danh mục', 'Số tiền (đ)']
+    .map((h) => `<th>${h}</th>`)
+    .join('');
+
+  const bodyRows = report
+    .map((person) => {
+      const actRows = person.activities
+        .map(
+          (a) => `
+        <tr>
+          <td>${esc(person.name)}</td>
+          <td>${esc(a.title)}</td>
+          <td>${fmtDate(a.date)}</td>
+          <td>${esc(a.category)}</td>
+          <td class="num">${Math.round(a.amount)}</td>
+        </tr>`,
+        )
+        .join('');
+      const totalRow = `
+        <tr class="total">
+          <td>${esc(person.name)}</td>
+          <td colspan="3">TỔNG CÒN NỢ</td>
+          <td class="num">${Math.round(person.owed)}</td>
+        </tr>`;
+      return actRows + totalRow;
+    })
+    .join('');
+
+  const grandOwed = report.reduce((s, p) => s + p.owed, 0);
+
   const html = `
     <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
       <head>
         <meta charset="UTF-8">
         <!--[if gte mso 9]>
-        <xml>
-          <x:ExcelWorkbook>
-            <x:ExcelWorksheets>
-              <x:ExcelWorksheet>
-                <x:Name>Chia tiền nhóm</x:Name>
-                <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
-              </x:ExcelWorksheet>
-            </x:ExcelWorksheets>
-          </x:ExcelWorkbook>
-        </xml>
+        <xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+          <x:Name>Công nợ chưa thu</x:Name>
+          <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+        </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml>
         <![endif]-->
         <style>
-          table { border-collapse: collapse; width: 100%; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #8b5cf6; color: white; font-weight: bold; }
+          table { border-collapse: collapse; }
+          th, td { border: 1px solid #d1d5db; padding: 6px 10px; font-family: Arial, sans-serif; font-size: 13px; }
+          th { background-color: #4f46e5; color: #fff; font-weight: bold; }
+          td.num { text-align: right; mso-number-format:"\\#\\,\\#\\#0"; color: #e11d48; }
+          tr.total td { background-color: #fff1f2; font-weight: bold; }
+          tr.grand td { background-color: #4f46e5; color: #fff; font-weight: bold; }
         </style>
       </head>
-      <body>${table.outerHTML}</body>
-    </html>
-  `;
+      <body>
+        <h3>Báo cáo công nợ chưa thu</h3>
+        <table>
+          <thead><tr>${headerCells}</tr></thead>
+          <tbody>
+            ${bodyRows}
+            <tr class="grand">
+              <td>TẤT CẢ</td><td colspan="3">TỔNG NỢ TOÀN NHÓM</td>
+              <td class="num" style="color:#fff">${Math.round(grandOwed)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </body>
+    </html>`;
 
-  const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel' });
-  
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', `chi-tien-nhom-${new Date().toISOString().split('T')[0]}.xls`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  triggerDownload(
+    new Blob(['﻿', html], { type: 'application/vnd.ms-excel' }),
+    `cong-no-chua-thu-${today()}.xls`,
+  );
 }

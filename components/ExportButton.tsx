@@ -1,12 +1,13 @@
 'use client';
 
 import { Download, FileText, FileJson, Table } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Activity } from '@/types';
 import { exportToCSV, exportToJSON, exportToExcel } from '@/lib/exportUtils';
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -21,25 +22,38 @@ export default function ExportButton({ activities }: ExportButtonProps) {
   if (activities.length === 0) return null;
 
   const handleExport = (type: 'csv' | 'json' | 'excel') => {
-    switch (type) {
-      case 'csv': exportToCSV(activities); break;
-      case 'json': exportToJSON(activities); break;
-      case 'excel': exportToExcel(activities); break;
+    try {
+      if (type === 'csv') exportToCSV(activities);
+      else if (type === 'json') exportToJSON(activities);
+      else exportToExcel(activities);
+      toast.success('📤 Đã xuất dữ liệu!');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Lỗi khi xuất dữ liệu. Vui lòng thử lại!');
     }
   };
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background px-3 h-9 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer">
-          <Download className="w-4 h-4" />
-          Xuất dữ liệu
-        </DropdownMenuTrigger>
+      <DropdownMenuTrigger
+        render={
+          <button
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-input bg-card/60 backdrop-blur px-3 h-9 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+            aria-label="Xuất dữ liệu"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden md:inline">Xuất dữ liệu</span>
+          </button>
+        }
+      />
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">Chọn định dạng</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="text-xs text-muted-foreground">Chọn định dạng</DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => handleExport('excel')} className="gap-2.5 cursor-pointer">
-          <div className="w-7 h-7 bg-emerald-100 dark:bg-emerald-900/40 rounded-md flex items-center justify-center shrink-0">
-            <Table className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+          <div className="w-7 h-7 bg-credit-bg rounded-md flex items-center justify-center shrink-0">
+            <Table className="w-3.5 h-3.5 text-credit" />
           </div>
           <div>
             <div className="font-medium text-sm">Excel (.xls)</div>
@@ -47,21 +61,21 @@ export default function ExportButton({ activities }: ExportButtonProps) {
           </div>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleExport('csv')} className="gap-2.5 cursor-pointer">
-          <div className="w-7 h-7 bg-blue-100 dark:bg-blue-900/40 rounded-md flex items-center justify-center shrink-0">
-            <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+          <div className="w-7 h-7 bg-primary/10 rounded-md flex items-center justify-center shrink-0">
+            <FileText className="w-3.5 h-3.5 text-primary" />
           </div>
           <div>
             <div className="font-medium text-sm">CSV (.csv)</div>
-            <div className="text-xs text-muted-foreground">Bảng tính CSV</div>
+            <div className="text-xs text-muted-foreground">Google Sheets</div>
           </div>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleExport('json')} className="gap-2.5 cursor-pointer">
-          <div className="w-7 h-7 bg-purple-100 dark:bg-purple-900/40 rounded-md flex items-center justify-center shrink-0">
-            <FileJson className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+          <div className="w-7 h-7 bg-accent rounded-md flex items-center justify-center shrink-0">
+            <FileJson className="w-3.5 h-3.5 text-accent-foreground" />
           </div>
           <div>
             <div className="font-medium text-sm">JSON (.json)</div>
-            <div className="text-xs text-muted-foreground">Dữ liệu JSON</div>
+            <div className="text-xs text-muted-foreground">Sao lưu dữ liệu</div>
           </div>
         </DropdownMenuItem>
       </DropdownMenuContent>
