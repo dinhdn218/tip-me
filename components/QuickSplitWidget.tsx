@@ -1,43 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  X,
-  Plus,
-  Minus,
-  Equal,
-  Percent,
-  DollarSign,
-  Users,
-  Zap,
-  Calendar,
-} from "lucide-react";
-import {
-  Activity,
-  ActivityCategory,
-  CATEGORY_LABELS,
-  CATEGORY_ICONS,
-} from "@/types";
-import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { useMemo, useState } from "react";
+import type { Activity, ActivityCategory, Participant } from "@/types";
+import { CATEGORY_LABELS } from "@/types";
+import { money, plain } from "@/lib/ledgerSelectors";
+import { markOf } from "@/components/CategoryMark";
+import SheetShell from "@/components/SheetShell";
 import { cn } from "@/lib/utils";
 
 type SplitMode = "equal" | "percentage" | "exact";
-
-interface ParticipantEntry {
-  name: string;
-  share: number; // % or exact amount depending on mode
-}
 
 interface QuickSplitWidgetProps {
   open: boolean;
   onClose: () => void;
   onAdd: (activity: Activity) => void;
   existingParticipants: string[];
+  /** Người ứng tiền — luôn được tick sẵn paid khi lưu */
+  payerName: string;
 }
 
 const CATEGORIES: ActivityCategory[] = [
@@ -49,420 +28,339 @@ const CATEGORIES: ActivityCategory[] = [
   "other",
 ];
 
+const QUICK_ADD = [50_000, 100_000, 500_000];
+
+/**
+ * Sheet ghi khoản mới. Thứ tự nhập theo cách người ta nói:
+ * "một triệu hai bốn, lẩu, năm người".
+ * Giữ đủ 3 chế độ chia; dòng "còn lại chưa chia" là bảo hiểm cho % và chính xác.
+ */
 export default function QuickSplitWidget({
   open,
   onClose,
   onAdd,
   existingParticipants,
+  payerName,
 }: QuickSplitWidgetProps) {
+  const [amount, setAmount] = useState("");
   const [title, setTitle] = useState("");
-  const [totalAmount, setTotalAmount] = useState("");
-  const [displayAmount, setDisplayAmount] = useState("");
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0],
-  );
   const [category, setCategory] = useState<ActivityCategory>("dining");
-  const [splitMode, setSplitMode] = useState<SplitMode>("equal");
-  const [participants, setParticipants] = useState<ParticipantEntry[]>([]);
+  const [mode, setMode] = useState<SplitMode>("equal");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [shares, setShares] = useState<Record<string, string>>({});
   const [newName, setNewName] = useState("");
+  const [extra, setExtra] = useState<string[]>([]);
 
-  // Reset on open
-  useEffect(() => {
-    if (open) {
-      setTitle("");
-      setTotalAmount("");
-      setDisplayAmount("");
-      setSelectedDate(new Date().toISOString().split("T")[0]);
-      setCategory("dining");
-      setSplitMode("equal");
-      setParticipants([]);
+  const roster = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const n of [payerName, ...existingParticipants, ...extra]) {
+      const name = n.trim();
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+      out.push(name);
+    }
+    return out;
+  }, [payerName, existingParticipants, extra]);
+
+  const total = parseInt(amount || "0", 10) || 0;
+  const count = picked.length;
+
+  /** Phần tiền của từng người theo chế độ đang chọn. */
+  const shareFor = (name: string): number => {
+    if (!picked.includes(name)) return 0;
+    if (mode === "equal") return count ? total / count : 0;
+    const raw = parseFloat(shares[name] ?? "") || 0;
+    if (mode === "percentage") return (raw / 100) * total;
+    return raw;
+  };
+
+  const allocated = picked.reduce((s, n) => s + shareFor(n), 0);
+  const remainder = total - allocated;
+  const balanced = Math.abs(remainder) < 1;
+
+  const canSave =
+    title.trim() !== "" && total > 0 && count >= 1 && (mode === "equal" || balanced);
+
+  const toggle = (name: string) =>
+    setPicked((prev) =>
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name],
+    );
+
+  const addPerson = () => {
+    const name = newName.trim();
+    if (!name || roster.includes(name)) {
       setNewName("");
+      return;
     }
-  }, [open]);
-
-  const formatCurrency = (value: string) => {
-    const n = value.replace(/\D/g, "");
-    return n ? new Intl.NumberFormat("vi-VN").format(parseInt(n)) : "";
-  };
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const numeric = e.target.value.replace(/\D/g, "");
-    setTotalAmount(numeric);
-    setDisplayAmount(formatCurrency(numeric));
-  };
-
-  const total = parseFloat(totalAmount) || 0;
-  const count = participants.length;
-
-  // Live preview calculation
-  const preview = (): { name: string; owes: number }[] => {
-    if (count === 0 || total === 0) return [];
-    if (splitMode === "equal") {
-      const each = total / count;
-      return participants.map((p) => ({ name: p.name, owes: each }));
-    }
-    if (splitMode === "percentage") {
-      const sumPct = participants.reduce((s, p) => s + p.share, 0);
-      return participants.map((p) => ({
-        name: p.name,
-        owes: sumPct > 0 ? (p.share / sumPct) * total : 0,
-      }));
-    }
-    // exact
-    return participants.map((p) => ({ name: p.name, owes: p.share }));
-  };
-
-  const livePreview = preview();
-
-  const shareSum = participants.reduce((s, p) => s + p.share, 0);
-  const exactValid = splitMode !== "exact" || Math.abs(shareSum - total) < 0.5;
-  const pctValid = splitMode !== "percentage" || Math.abs(shareSum - 100) < 0.1;
-  const canSubmit =
-    title.trim() && total > 0 && count >= 1 && exactValid && pctValid;
-
-  const addParticipant = (name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed || participants.some((p) => p.name === trimmed)) return;
-    setParticipants((prev) => [
-      ...prev,
-      {
-        name: trimmed,
-        share:
-          splitMode === "percentage" ? Math.round(100 / (prev.length + 1)) : 0,
-      },
-    ]);
+    setExtra((prev) => [...prev, name]);
+    setPicked((prev) => [...prev, name]);
     setNewName("");
   };
 
-  const removeParticipant = (name: string) => {
-    setParticipants((prev) => prev.filter((p) => p.name !== name));
-  };
+  const save = () => {
+    if (!canSave) return;
 
-  const updateShare = (name: string, value: string) => {
-    const num = parseFloat(value) || 0;
-    setParticipants((prev) =>
-      prev.map((p) => (p.name === name ? { ...p, share: num } : p)),
-    );
-  };
+    const participants: Participant[] = picked.map((name) => {
+      const base: Participant = { name, paid: name === payerName };
+      // Chỉ ghi shareAmount cho chế độ chia riêng — chia đều dùng amountPerPerson,
+      // nhờ đó splitLabel() phân biệt được "CHIA ĐỀU" và "CHIA RIÊNG".
+      if (mode !== "equal") base.shareAmount = Math.round(shareFor(name));
+      return base;
+    });
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    const pv = livePreview;
-    const amountPerPerson =
-      splitMode === "equal" ? total / count : total / count; // for display fallback
-
-    const activity: Activity = {
+    onAdd({
       id: Date.now().toString(),
       title: title.trim(),
       totalAmount: total,
-      amountPerPerson: pv.length > 0 ? total / pv.length : total / count,
-      date: new Date(selectedDate).toISOString(),
+      amountPerPerson: count ? Math.round(total / count) : 0,
+      date: new Date().toISOString(),
       category,
-      participants: participants.map((p) => {
-        const found = pv.find((x) => x.name === p.name);
-        return {
-          name: p.name,
-          paid: false,
-          shareAmount: found?.owes ?? amountPerPerson,
-        };
-      }),
-    };
-    onAdd(activity);
+      participants,
+    });
     onClose();
   };
 
-  const fmt = (n: number) =>
-    n.toLocaleString("vi-VN", { maximumFractionDigits: 0 });
+  const seg = (active: boolean) =>
+    cn(
+      "min-h-11 font-mono text-[12px] tracking-[0.1em] border transition-colors",
+      active
+        ? "bg-ink text-on-ink border-ink"
+        : "border-rule text-ink-2 hover:border-ink hover:text-ink",
+    );
 
   return (
-    <Sheet
+    <SheetShell
       open={open}
-      onOpenChange={(o) => {
-        if (!o) onClose();
-      }}
+      onClose={onClose}
+      header={<h2 className="text-head font-semibold">Ghi khoản mới</h2>}
+      footer={
+        <button
+          type="button"
+          onClick={save}
+          disabled={!canSave}
+          className="w-full min-h-[52px] bg-ink text-on-ink rounded-ctl
+                     font-mono text-[13px] tracking-[0.1em] hover:opacity-90
+                     disabled:opacity-40 transition-opacity"
+        >
+          LƯU VÀO SỔ
+        </button>
+      }
     >
-      <SheetContent
-        side="right"
-        showCloseButton={false}
-        className="w-full sm:max-w-md flex flex-col p-0 gap-0"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-brand-gradient flex items-center justify-center ring-brand">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-sm text-foreground">
-                Thêm chi phí
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                Chia bill thông minh
-              </p>
-            </div>
-          </div>
-          <SheetClose
-            render={
-              <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors">
-                <X className="w-4 h-4 text-muted-foreground" />
-              </button>
-            }
+      {/* 1. Số tiền */}
+      <div className="border-t border-rule pt-4">
+        <label htmlFor="split-amount" className="eyebrow block mb-1.5">
+          SỐ TIỀN
+        </label>
+        <div className="flex items-baseline gap-2 border-b-2 border-ink">
+          <input
+            id="split-amount"
+            type="text"
+            inputMode="numeric"
+            value={total ? plain(total).replace("đ", "") : ""}
+            onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
+            placeholder="0"
+            className="tnum flex-1 min-w-0 bg-transparent text-fig outline-none py-1
+                       placeholder:text-ink-3"
           />
+          <span className="text-head text-ink-3">đ</span>
         </div>
-
-        {/* Body — scrollable */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-          {/* Title */}
-          <div>
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
-              Tên hoạt động
-            </Label>
-            <Input
-              placeholder="VD: Ăn tối nhóm"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="h-9"
-            />
-          </div>
-
-          {/* Amount + Date */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
-                Tổng tiền (đ)
-              </Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="500,000"
-                  value={displayAmount}
-                  onChange={handleAmountChange}
-                  className="pl-8 h-9 font-semibold"
-                />
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1">
-                <Calendar className="w-3 h-3" /> Ngày
-              </Label>
-              <Input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                max={new Date().toISOString().split("T")[0]}
-                className="h-9"
-              />
-            </div>
-          </div>
-
-          {/* Category */}
-          <div>
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
-              Danh mục
-            </Label>
-            <div className="flex gap-1.5 flex-wrap">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setCategory(cat)}
-                  className={cn(
-                    "flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all",
-                    category === cat
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-muted text-muted-foreground border-transparent hover:border-border",
-                  )}
-                >
-                  <span role="img" aria-hidden>
-                    {CATEGORY_ICONS[cat]}
-                  </span>
-                  {CATEGORY_LABELS[cat]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Split mode */}
-          <div>
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
-              Cách chia
-            </Label>
-            <div className="grid grid-cols-3 gap-1.5 p-1 bg-muted rounded-xl">
-              {(
-                [
-                  {
-                    mode: "equal" as SplitMode,
-                    icon: Equal,
-                    label: "Đều nhau",
-                  },
-                  {
-                    mode: "percentage" as SplitMode,
-                    icon: Percent,
-                    label: "Theo %",
-                  },
-                  {
-                    mode: "exact" as SplitMode,
-                    icon: DollarSign,
-                    label: "Chính xác",
-                  },
-                ] as const
-              ).map(({ mode, icon: Icon, label }) => (
-                <button
-                  key={mode}
-                  onClick={() => setSplitMode(mode)}
-                  className={cn(
-                    "flex flex-col items-center gap-0.5 py-2 rounded-lg text-[11px] font-semibold transition-all",
-                    splitMode === mode
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Participants */}
-          <div>
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block flex items-center gap-1.5">
-              <Users className="w-3 h-3" /> Người tham gia ({count})
-            </Label>
-
-            {/* Add participant */}
-            <div className="flex gap-2 mb-2">
-              <Input
-                placeholder="Tên người tham gia"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addParticipant(newName)}
-                className="h-8 text-sm flex-1"
-                list="participant-suggestions"
-              />
-              <datalist id="participant-suggestions">
-                {existingParticipants
-                  .filter((n) => !participants.some((p) => p.name === n))
-                  .map((n) => (
-                    <option key={n} value={n} />
-                  ))}
-              </datalist>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => addParticipant(newName)}
-                className="h-8 px-2.5"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-
-            {/* Participant list */}
-            <div className="space-y-1.5">
-              {participants.map((p) => (
-                <div
-                  key={p.name}
-                  className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5"
-                >
-                  <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-                    {p.name[0]?.toUpperCase()}
-                  </div>
-                  <span className="flex-1 text-sm font-medium truncate">
-                    {p.name}
-                  </span>
-                  {splitMode !== "equal" && (
-                    <Input
-                      type="number"
-                      value={p.share || ""}
-                      onChange={(e) => updateShare(p.name, e.target.value)}
-                      className="w-20 h-7 text-xs text-right"
-                      placeholder={splitMode === "percentage" ? "%" : "đ"}
-                      min={0}
-                    />
-                  )}
-                  <button
-                    onClick={() => removeParticipant(p.name)}
-                    className="text-muted-foreground hover:text-destructive transition-colors ml-1"
-                    aria-label={`Xóa ${p.name}`}
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Validation hint */}
-            {splitMode === "percentage" && count > 0 && (
-              <p
-                className={cn(
-                  "text-[11px] mt-1.5",
-                  Math.abs(shareSum - 100) < 0.1
-                    ? "text-credit"
-                    : "text-debt",
-                )}
-              >
-                Tổng %: {shareSum.toFixed(1)}%{" "}
-                {Math.abs(shareSum - 100) < 0.1 ? "✓" : "(cần đủ 100%)"}
-              </p>
-            )}
-            {splitMode === "exact" && count > 0 && total > 0 && (
-              <p
-                className={cn(
-                  "text-[11px] mt-1.5",
-                  Math.abs(shareSum - total) < 0.5
-                    ? "text-credit"
-                    : "text-debt",
-                )}
-              >
-                Tổng: {fmt(shareSum)}đ / {fmt(total)}đ{" "}
-                {Math.abs(shareSum - total) < 0.5 ? "✓" : "(chưa khớp)"}
-              </p>
-            )}
-          </div>
-
-          {/* Live preview */}
-          {livePreview.length > 0 && (
-            <div className="bg-muted/40 rounded-xl p-3 border border-border/60">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                Xem trước phân chia
-              </p>
-              <div className="space-y-1.5">
-                {livePreview.map(({ name, owes }) => (
-                  <div
-                    key={name}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <span className="font-medium">{name}</span>
-                    <Badge variant="secondary" className="font-mono text-xs">
-                      {fmt(owes)}đ
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="flex gap-1.5 mt-2.5">
+          {QUICK_ADD.map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() =>
+                setAmount(String((parseInt(amount || "0", 10) || 0) + n))
+              }
+              className="min-h-10 px-3 border border-rule rounded-ctl font-mono text-[11px]
+                         text-ink-2 hover:border-ink hover:text-ink transition-colors"
+            >
+              +{n / 1000}K
+            </button>
+          ))}
         </div>
+      </div>
 
-        {/* Footer CTA */}
-        <div className="px-5 py-4 border-t border-border shrink-0">
-          <Button
-            className="w-full gap-2 font-semibold bg-brand-gradient text-white border-0 ring-brand hover:opacity-90 disabled:opacity-50"
-            disabled={!canSubmit}
-            onClick={handleSubmit}
+      {/* 2. Nội dung */}
+      <div className="mt-6">
+        <label htmlFor="split-title" className="eyebrow block mb-1.5">
+          NỘI DUNG
+        </label>
+        <input
+          id="split-title"
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Lẩu Kỳ Đồng"
+          className="w-full bg-transparent text-row outline-none py-1.5
+                     border-b border-rule-strong focus:border-ink placeholder:text-ink-3"
+        />
+      </div>
+
+      {/* 3. Danh mục */}
+      <div className="mt-6">
+        <span className="eyebrow block mb-2">DANH MỤC</span>
+        <div className="grid grid-cols-6 gap-1.5">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCategory(c)}
+              aria-label={CATEGORY_LABELS[c]}
+              aria-pressed={category === c}
+              className={cn(seg(category === c), "rounded-ctl")}
+            >
+              {markOf(c)}
+            </button>
+          ))}
+        </div>
+        <div className="font-mono text-eyebrow text-ink-3 mt-2">
+          {CATEGORY_LABELS[category].toUpperCase()}
+        </div>
+      </div>
+
+      {/* 4. Chia cho */}
+      <div className="mt-6 flex items-baseline justify-between">
+        <span className="eyebrow">
+          CHIA CHO · {count} NGƯỜI
+        </span>
+        <button
+          type="button"
+          onClick={() =>
+            setPicked(picked.length === roster.length ? [] : [...roster])
+          }
+          className="font-mono text-eyebrow tracking-[0.1em] text-stamp border-b border-stamp py-0.5"
+        >
+          {picked.length === roster.length ? "BỎ HẾT" : "CHỌN HẾT"}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-1.5 mt-2.5">
+        {(
+          [
+            ["equal", "ĐỀU"],
+            ["percentage", "%"],
+            ["exact", "CHÍNH XÁC"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setMode(key)}
+            aria-pressed={mode === key}
+            className={cn(seg(mode === key), "rounded-ctl")}
           >
-            <Zap className="w-4 h-4" />
-            Thêm chi phí
-            {total > 0 && ` — ${fmt(total)}đ`}
-          </Button>
-          {count < 1 && (
-            <p className="text-center text-[11px] text-muted-foreground mt-2">
-              Cần ít nhất 1 người tham gia
-            </p>
-          )}
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* 5. Danh sách người */}
+      <div className="mt-3">
+        {roster.map((name) => {
+          const on = picked.includes(name);
+          return (
+            <div
+              key={name}
+              className={cn(
+                "grid grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-3 py-2.5",
+                "border-b border-rule min-h-14",
+                !on && "opacity-50",
+              )}
+            >
+              <button
+                type="button"
+                onClick={() => toggle(name)}
+                role="checkbox"
+                aria-checked={on}
+                aria-label={`Chia cho ${name}`}
+                className={cn(
+                  "w-6 h-6 min-h-6 grid place-items-center border rounded-ctl font-mono text-[13px]",
+                  on
+                    ? "bg-ink border-ink text-on-ink"
+                    : "border-rule-strong text-transparent",
+                )}
+              >
+                ✓
+              </button>
+
+              <span className="min-w-0 truncate text-body">
+                {name}
+                {name === payerName && (
+                  <span className="text-ink-3"> · ứng tiền</span>
+                )}
+              </span>
+
+              {!on ? (
+                <span className="tnum text-body text-ink-3">—</span>
+              ) : mode === "equal" ? (
+                <span className="tnum text-body">{money(shareFor(name))}</span>
+              ) : (
+                <span className="flex items-baseline gap-1">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={shares[name] ?? ""}
+                    onChange={(e) =>
+                      setShares((prev) => ({
+                        ...prev,
+                        [name]: e.target.value.replace(/[^\d.]/g, ""),
+                      }))
+                    }
+                    placeholder="0"
+                    aria-label={`Phần của ${name}`}
+                    className="tnum w-[104px] text-right bg-transparent text-body outline-none
+                               border-b border-rule-strong focus:border-ink placeholder:text-ink-3"
+                  />
+                  <span className="text-ink-3 text-body">
+                    {mode === "percentage" ? "%" : "đ"}
+                  </span>
+                </span>
+              )}
+            </div>
+          );
+        })}
+
+        <div className="flex items-center gap-2 py-3">
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addPerson();
+              }
+            }}
+            placeholder="Thêm người khác…"
+            aria-label="Thêm người vào khoản này"
+            className="flex-1 min-w-0 bg-transparent text-body outline-none py-1.5
+                       border-b border-rule focus:border-ink placeholder:text-ink-3"
+          />
+          <button
+            type="button"
+            onClick={addPerson}
+            className="min-h-11 px-3 border border-rule rounded-ctl font-mono text-[11px]
+                       tracking-[0.1em] text-ink-2 hover:border-ink hover:text-ink transition-colors"
+          >
+            THÊM
+          </button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </div>
+
+      {/* 6. Bảo hiểm cho % và chính xác */}
+      <div className="rule-total mt-2 pt-3.5 flex items-baseline justify-between">
+        <span className="eyebrow">CÒN LẠI CHƯA CHIA</span>
+        {balanced ? (
+          <span className="tnum text-row text-settled">0đ ✓</span>
+        ) : (
+          <span className="tnum text-row text-stamp">
+            {remainder > 0 ? "−" : "+"}
+            {money(Math.abs(remainder))}
+          </span>
+        )}
+      </div>
+    </SheetShell>
   );
 }

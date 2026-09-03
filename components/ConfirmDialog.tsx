@@ -33,16 +33,16 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   const icons = {
     danger: <XCircle className="w-5 h-5 text-destructive" />,
-    warning: <AlertTriangle className="w-5 h-5 text-debt" />,
+    warning: <AlertTriangle className="w-5 h-5 text-stamp" />,
     info: <Info className="w-5 h-5 text-primary" />,
-    success: <CheckCircle className="w-5 h-5 text-credit" />,
+    success: <CheckCircle className="w-5 h-5 text-settled" />,
   };
 
   const actionClass = {
-    danger: 'bg-destructive hover:bg-destructive/90 text-white',
-    warning: 'bg-debt hover:bg-debt/90 text-white',
+    danger: 'bg-stamp hover:opacity-90 text-on-ink',
+    warning: 'bg-stamp hover:opacity-90 text-on-ink',
     info: 'bg-primary hover:bg-primary/90 text-primary-foreground',
-    success: 'bg-credit hover:bg-credit/90 text-white',
+    success: 'bg-settled hover:opacity-90 text-on-ink',
   };
 
   return (

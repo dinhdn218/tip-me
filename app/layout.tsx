@@ -1,22 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Instrument_Serif } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
 
-const instrumentSerif = Instrument_Serif({
+const geistMono = Geist_Mono({
   subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-  variable: "--font-instrument-serif",
+  variable: "--font-geist-mono",
 });
 
 export const metadata: Metadata = {
-  title: "Chia Tiền Nhóm - Quản lý chi tiêu nhóm",
+  title: "Sổ Chung - Chia tiền nhóm",
   description:
-    "Ứng dụng quản lý và chia tiền chi tiêu nhóm dễ dàng, minh bạch. Theo dõi chi phí, tính toán công nợ tự động.",
+    "Sổ ghi chép chi tiêu chung của nhóm. Xem ai còn nợ bao nhiêu và trả cho ai, không cần đăng nhập.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
@@ -26,8 +24,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#4f46e5" },
-    { media: "(prefers-color-scheme: dark)", color: "#312e81" },
+    { media: "(prefers-color-scheme: light)", color: "#f9f7f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#241f1a" },
   ],
 };
 
@@ -37,7 +35,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={cn(geist.variable, instrumentSerif.variable)} suppressHydrationWarning>
+    <html
+      lang="vi"
+      className={cn(geistSans.variable, geistMono.variable)}
+      suppressHydrationWarning
+    >
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -46,6 +48,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
+        <div className="paper-grain" aria-hidden />
         <TooltipProvider>{children}</TooltipProvider>
       </body>
     </html>

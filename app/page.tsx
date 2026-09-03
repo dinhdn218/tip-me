@@ -1,49 +1,120 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Activity, PaymentQR, AdminConfig } from "@/types";
-import ActivityList from "@/components/ActivityList";
-import DebtSummary from "@/components/DebtSummary";
-import QRCodeManager from "@/components/QRCodeManager";
-import AuthModal from "@/components/AuthModal";
-import Overview from "@/components/Overview";
-import SearchFilter from "@/components/SearchFilter";
-import TopBar from "@/components/TopBar";
-import NavDock from "@/components/NavDock";
-import QuickSplitWidget from "@/components/QuickSplitWidget";
-import { Loader2 } from "lucide-react";
-import * as firebaseService from "@/lib/firebaseService";
+import { useEffect, useMemo, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
+import type { Activity, ActivityCategory, PaymentQR, AdminConfig } from "@/types";
+import * as firebaseService from "@/lib/firebaseService";
 import { hashPin, verifyPin } from "@/lib/securityUtils";
+import { getMe, setMe as persistMe } from "@/lib/identity";
+import {
+  buildLedger,
+  filterActivities,
+  monthGroups,
+  plain,
+} from "@/lib/ledgerSelectors";
+
+import AppHeader from "@/components/AppHeader";
+import ActionBar from "@/components/ActionBar";
+import Ledger from "@/components/Ledger";
+import ActivityList from "@/components/ActivityList";
+import ActivitySheet from "@/components/ActivitySheet";
+import PaySheet from "@/components/PaySheet";
+import PersonSheet from "@/components/PersonSheet";
+import PinSheet from "@/components/PinSheet";
+import NotebookMenu from "@/components/NotebookMenu";
+import QuickSplitWidget from "@/components/QuickSplitWidget";
+import EmptyLedger from "@/components/EmptyLedger";
+import LedgerSkeleton from "@/components/LedgerSkeleton";
+
+type Sheet =
+  | null
+  | { kind: "pay" }
+  | { kind: "activity"; id: string }
+  | { kind: "person"; name: string }
+  | { kind: "split" }
+  | { kind: "pin" }
+  | { kind: "menu" };
 
 export default function Home() {
+  /* ---- dữ liệu ---------------------------------------------------------- */
   const [activities, setActivities] = useState<Activity[]>([]);
   const [paymentQR, setPaymentQR] = useState<PaymentQR | null>(null);
-  const [activeTab, setActiveTab] = useState<
-    "overview" | "list" | "summary" | "qr"
-  >("overview");
-  const [isConnected, setIsConnected] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(true);
   const [adminConfig, setAdminConfig] = useState<AdminConfig | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  /* ---- vai trò & danh tính ---------------------------------------------- */
+  const [isAdmin, setIsAdmin] = useState(false);
   const [adminName, setAdminName] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [filteredActivities, setFilteredActivities] = useState<Activity[]>([]);
-  const [showQuickSplit, setShowQuickSplit] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [me, setMeState] = useState<string | null>(null);
+
+  /* ---- điều hướng -------------------------------------------------------- */
+  const [tab, setTab] = useState<"so" | "hd">("so");
+  const [sheet, setSheet] = useState<Sheet>(null);
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
-  useEffect(() => {
-    setFilteredActivities(activities);
-  }, [activities]);
+  /* ---- bộ lọc màn Hoạt động ---------------------------------------------- */
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<ActivityCategory | "all">("all");
 
-  // Sync theme state with the class applied by the anti-FOUC script in layout.
+  /* ---- khởi tạo ---------------------------------------------------------- */
+  // localStorage và class .dark chỉ đọc được sau khi mount: đọc lúc render sẽ
+  // lệch giữa server và client và gây hydration warning.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMeState(getMe());
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTheme(
       document.documentElement.classList.contains("dark") ? "dark" : "light",
     );
   }, []);
 
+  useEffect(() => {
+    firebaseService
+      .getAdminConfig()
+      .then(setAdminConfig)
+      .catch((error) => console.error("Error loading admin config:", error));
+  }, []);
+
+  useEffect(() => {
+    let unsubscribeActivities: (() => void) | undefined;
+    let unsubscribeQR: (() => void) | undefined;
+    try {
+      unsubscribeActivities = firebaseService.subscribeToActivities((data) => {
+        setActivities(data);
+        setLoaded(true);
+      });
+      unsubscribeQR = firebaseService.subscribeToPaymentQR(setPaymentQR);
+    } catch {
+      // Không nối được Firestore → thoát skeleton để hiện sổ trống thay vì treo.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoaded(true);
+    }
+    return () => {
+      unsubscribeActivities?.();
+      unsubscribeQR?.();
+    };
+  }, []);
+
+  /* ---- giá trị dẫn xuất — một useMemo, không lưu trùng vào state --------- */
+  const payerName = adminConfig?.name ?? adminName ?? "";
+
+  const ledger = useMemo(
+    () => buildLedger(activities, payerName, me),
+    [activities, payerName, me],
+  );
+
+  const groups = useMemo(
+    () => monthGroups(filterActivities(activities, { query, category })),
+    [activities, query, category],
+  );
+
+  const roster = useMemo(() => {
+    const s = new Set<string>();
+    activities.forEach((a) => a.participants.forEach((p) => s.add(p.name)));
+    return Array.from(s).sort();
+  }, [activities]);
+
+  /* ---- theme -------------------------------------------------------------- */
   const toggleTheme = () => {
     setTheme((prev) => {
       const next = prev === "dark" ? "light" : "dark";
@@ -55,82 +126,54 @@ export default function Home() {
     });
   };
 
-  const handleGlobalSearch = (value: string) => {
-    setSearchQuery(value);
-    if (value && activeTab !== "list") setActiveTab("list");
+  /* ---- danh tính ---------------------------------------------------------- */
+  const pickMe = (name: string) => {
+    persistMe(name);
+    setMeState(name);
+    toast.success(`Xin chào ${name}`);
   };
 
-  useEffect(() => {
-    const loadAdminConfig = async () => {
-      try {
-        const config = await firebaseService.getAdminConfig();
-        setAdminConfig(config);
-      } catch (error) {
-        console.error("Error loading admin config:", error);
-      }
-    };
-    loadAdminConfig();
-  }, []);
+  const clearMe = () => {
+    persistMe(null);
+    setMeState(null);
+  };
 
-  useEffect(() => {
-    let unsubscribeActivities: (() => void) | undefined;
-    let unsubscribeQR: (() => void) | undefined;
-    try {
-      unsubscribeActivities = firebaseService.subscribeToActivities((data) => {
-        setActivities(data);
-        setIsConnected(true);
-      });
-      unsubscribeQR = firebaseService.subscribeToPaymentQR((data) => {
-        setPaymentQR(data);
-      });
-    } catch {
-      setIsConnected(false);
-    }
-    return () => {
-      unsubscribeActivities?.();
-      unsubscribeQR?.();
-    };
-  }, []);
-
+  /* ---- ghi dữ liệu (giữ nguyên chữ ký & luồng) ---------------------------- */
   const addActivity = async (activity: Activity) => {
-    setIsLoading(true);
     try {
       await firebaseService.addActivity(activity);
-      toast.success("✅ Thêm hoạt động thành công!");
-      setActiveTab("list");
+      toast.success("Đã ghi vào sổ");
     } catch {
-      toast.error("Lỗi khi thêm hoạt động. Vui lòng thử lại!");
-    } finally {
-      setIsLoading(false);
+      toast.error("Lỗi khi ghi khoản. Vui lòng thử lại!");
     }
   };
 
-  const updateActivity = async (updatedActivity: Activity) => {
-    setIsLoading(true);
+  const updateActivity = async (updated: Activity) => {
     try {
-      await firebaseService.updateActivity(updatedActivity.id, updatedActivity);
-      toast.success("🔄 Cập nhật thành công!");
+      await firebaseService.updateActivity(updated.id, updated);
     } catch {
       toast.error("Lỗi khi cập nhật. Vui lòng thử lại!");
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const deleteActivity = async (id: string) => {
-    setIsLoading(true);
     try {
       await firebaseService.deleteActivity(id);
-      toast.success("🗑️ Xóa thành công!");
+      toast.success("Đã xóa khoản");
     } catch {
       toast.error("Lỗi khi xóa. Vui lòng thử lại!");
-    } finally {
-      setIsLoading(false);
     }
   };
 
+  const togglePaid = (activity: Activity, name: string) =>
+    updateActivity({
+      ...activity,
+      participants: activity.participants.map((p) =>
+        p.name === name ? { ...p, paid: !p.paid } : p,
+      ),
+    });
+
   const markAllPaidForPerson = async (personName: string) => {
-    setIsLoading(true);
     try {
       const toUpdate = activities.filter((a) =>
         a.participants.some((p) => p.name === personName && !p.paid),
@@ -143,314 +186,262 @@ export default function Home() {
           ),
         });
       }
-      toast.success(
-        `✅ Đã đánh dấu tất cả khoản nợ của ${personName} là đã thanh toán!`,
-      );
+      toast.success(`Đã tick tất cả khoản của ${personName}`);
     } catch {
       toast.error("Lỗi khi cập nhật. Vui lòng thử lại!");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const deleteAllActivities = async () => {
-    setIsLoading(true);
-    try {
-      for (const activity of activities)
-        await firebaseService.deleteActivity(activity.id);
-      toast.success("🗑️ Đã xóa tất cả hoạt động!");
-    } catch {
-      toast.error("Lỗi khi xóa. Vui lòng thử lại!");
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const updatePaymentQR = async (qr: PaymentQR) => {
-    setIsLoading(true);
     try {
       await firebaseService.savePaymentQR(qr);
-      toast.success("💾 Lưu QR code thành công!");
+      toast.success("Đã lưu thông tin chuyển khoản");
     } catch {
-      toast.error("Lỗi khi lưu QR code. Vui lòng thử lại!");
-    } finally {
-      setIsLoading(false);
+      toast.error("Lỗi khi lưu QR. Vui lòng thử lại!");
     }
   };
 
-  const handleAdminLogin = async (pin: string) => {
+  /* ---- PIN: hash + tự nâng cấp PIN plaintext cũ (giữ nguyên) -------------- */
+  const handleAdminLogin = async (pin: string): Promise<boolean> => {
     if (!adminConfig) {
       try {
-        setIsLoading(true);
         const hashedPin = await hashPin(pin);
         const newConfig: AdminConfig = {
           pin: hashedPin,
-          name: adminName || "Admin",
+          name: adminName.trim() || "Admin",
         };
         await firebaseService.saveAdminConfig(newConfig);
         setAdminConfig(newConfig);
         setIsAdmin(true);
-        setShowAuthModal(false);
         setAdminName(newConfig.name);
-        toast.success(`🎉 Chào mừng ${newConfig.name}! Tài khoản đã được tạo.`);
+        setSheet(null);
+        toast.success(`Chào ${newConfig.name} — sổ đã sẵn sàng`);
+        return true;
       } catch {
         toast.error("Lỗi khi tạo tài khoản!");
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      try {
-        setIsLoading(true);
-        let isValid = await verifyPin(pin, adminConfig.pin);
-        if (!isValid && pin === adminConfig.pin) {
-          isValid = true;
-          const hashedPin = await hashPin(pin);
-          const updatedConfig = { ...adminConfig, pin: hashedPin };
-          await firebaseService.saveAdminConfig(updatedConfig);
-          setAdminConfig(updatedConfig);
-          toast.success(
-            `👋 Chào ${adminConfig.name}! (PIN đã được nâng cấp bảo mật)`,
-          );
-        } else if (isValid) {
-          toast.success(`👋 Chào ${adminConfig.name}!`);
-        } else {
-          toast.error("❌ Mã PIN không chính xác!");
-        }
-        if (isValid) {
-          setIsAdmin(true);
-          setShowAuthModal(false);
-          setAdminName(adminConfig.name);
-        }
-      } finally {
-        setIsLoading(false);
+        return false;
       }
     }
+
+    let isValid = await verifyPin(pin, adminConfig.pin);
+    if (!isValid && pin === adminConfig.pin) {
+      isValid = true;
+      const hashedPin = await hashPin(pin);
+      const updatedConfig = { ...adminConfig, pin: hashedPin };
+      await firebaseService.saveAdminConfig(updatedConfig);
+      setAdminConfig(updatedConfig);
+      toast.success(`Chào ${adminConfig.name} (PIN đã được nâng cấp bảo mật)`);
+    } else if (isValid) {
+      toast.success(`Chào ${adminConfig.name}`);
+    }
+
+    if (isValid) {
+      setIsAdmin(true);
+      setAdminName(adminConfig.name);
+      setSheet(null);
+    }
+    return isValid;
   };
 
-  const handleViewerMode = () => {
-    setIsAdmin(false);
-    setShowAuthModal(false);
-    setAdminName("");
-  };
   const handleLogout = () => {
     setIsAdmin(false);
-    setShowAuthModal(true);
-    setAdminName("");
-    setActiveTab("overview");
+    toast.success("Đã thoát quản trị");
   };
 
-  const getAllParticipants = (): string[] => {
-    const s = new Set<string>();
-    activities.forEach((a) => a.participants.forEach((p) => s.add(p.name)));
-    return Array.from(s).sort();
-  };
+  /* ---- thanh hành động: một nút, nhãn theo trạng thái --------------------- */
+  const action: { label: string; onClick: () => void; variant: "primary" | "outline" } =
+    isAdmin
+      ? {
+          label: "+ GHI KHOẢN MỚI",
+          onClick: () => setSheet({ kind: "split" }),
+          variant: "primary",
+        }
+      : !me
+        ? {
+            label: "ĐĂNG NHẬP QUẢN TRỊ",
+            onClick: () => setSheet({ kind: "pin" }),
+            variant: "outline",
+          }
+        : ledger.myOwed > 0 && !ledger.iAmPayer
+          ? {
+              label: `TRẢ ${plain(ledger.myOwed)}đ →`,
+              onClick: () => setSheet({ kind: "pay" }),
+              variant: "primary",
+            }
+          : {
+              label: "XEM QR CHUYỂN KHOẢN",
+              onClick: () => setSheet({ kind: "pay" }),
+              variant: "primary",
+            };
 
-  const pendingCount = activities.reduce(
-    (n, a) => n + a.participants.filter((p) => !p.paid).length,
-    0,
+  const openActivity = (activity: Activity) =>
+    setSheet({ kind: "activity", id: activity.id });
+
+  const sheetActivity =
+    sheet?.kind === "activity"
+      ? (activities.find((a) => a.id === sheet.id) ?? null)
+      : null;
+
+  const empty = loaded && activities.length === 0;
+
+  /* ---- các mảnh dùng chung cho cả mobile và desktop ------------------------ */
+  const ledgerPane = !loaded ? (
+    <LedgerSkeleton />
+  ) : empty ? (
+    <EmptyLedger isAdmin={isAdmin} onAdd={() => setSheet({ kind: "split" })} />
+  ) : (
+    <Ledger
+      ledger={ledger}
+      me={me}
+      isAdmin={isAdmin}
+      payerName={payerName}
+      onPickMe={pickMe}
+      onClearMe={clearMe}
+      onOpenPerson={(name) => setSheet({ kind: "person", name })}
+      onOpenActivity={openActivity}
+      onOpenPay={() => setSheet({ kind: "pay" })}
+      onGoActivities={() => setTab("hd")}
+    />
   );
 
-  const TAB_META: Record<
-    typeof activeTab,
-    { title: string; subtitle: string }
-  > = {
-    overview: {
-      title: "Tổng quan",
-      subtitle: "Bức tranh chi tiêu & công nợ của cả nhóm",
-    },
-    list: {
-      title: "Hoạt động",
-      subtitle: "Tất cả các khoản chi tiêu của nhóm",
-    },
-    summary: {
-      title: "Công nợ",
-      subtitle: "Theo dõi chi tiết các khoản phải thu",
-    },
-    qr: {
-      title: isAdmin ? "Quản lý QR Code" : "Thông tin thanh toán",
-      subtitle: isAdmin
-        ? "Cập nhật thông tin chuyển khoản"
-        : "Quét mã hoặc chuyển khoản",
-    },
-  };
-  const meta = TAB_META[activeTab];
+  const activityPane = (
+    <ActivityList
+      groups={groups}
+      all={activities}
+      query={query}
+      onQuery={setQuery}
+      category={category}
+      onCategory={setCategory}
+      onOpen={openActivity}
+    />
+  );
 
   return (
-    <>
-      {/* Animated mesh background */}
-      <div className="app-bg" aria-hidden>
-        <div
-          className="blob"
-          style={{
-            width: "42vw",
-            height: "42vw",
-            top: "-8vh",
-            left: "-6vw",
-            background: "oklch(0.62 0.20 280)",
-          }}
-        />
-        <div
-          className="blob"
-          style={{
-            width: "36vw",
-            height: "36vw",
-            top: "-4vh",
-            right: "-8vw",
-            left: "auto",
-            background: "oklch(0.64 0.18 320)",
-            animationDelay: "-7s",
-          }}
-        />
-        <div
-          className="blob"
-          style={{
-            width: "40vw",
-            height: "40vw",
-            bottom: "-10vh",
-            right: "4vw",
-            left: "auto",
-            background: "oklch(0.66 0.15 210)",
-            animationDelay: "-13s",
-          }}
-        />
-        <div
-          className="blob"
-          style={{
-            width: "30vw",
-            height: "30vw",
-            bottom: "-6vh",
-            left: "-4vw",
-            background: "oklch(0.66 0.17 350)",
-            animationDelay: "-3s",
-          }}
-        />
-      </div>
-
+    <div className="relative z-10 min-h-dvh flex flex-col lg:bg-paper-2">
       <Toaster
         position="top-center"
         toastOptions={{
-          duration: 3000,
+          duration: 2600,
           style: {
-            background: "#1e1b3a",
-            color: "#fff",
-            borderRadius: "16px",
-            padding: "16px",
-            fontWeight: "600",
+            background: "var(--ink)",
+            color: "var(--on-ink)",
+            borderRadius: "3px",
+            padding: "12px 16px",
+            fontSize: "14px",
           },
-          success: { iconTheme: { primary: "#10b981", secondary: "#fff" } },
-          error: { iconTheme: { primary: "#f43f5e", secondary: "#fff" } },
         }}
       />
 
-      {isLoading && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-card p-6 rounded-2xl shadow-2xl flex items-center gap-3 border border-border">
-            <Loader2 className="w-6 h-6 text-primary animate-spin" />
-            <span className="text-sm font-semibold">Đang xử lý...</span>
-          </div>
-        </div>
-      )}
-
-      {showAuthModal && (
-        <AuthModal
-          onAdminLogin={handleAdminLogin}
-          onViewerMode={handleViewerMode}
-          isFirstTime={!adminConfig}
+      <div className="flex-1 flex flex-col lg:max-w-[1160px] lg:w-full lg:mx-auto lg:bg-paper lg:border-x lg:border-rule-strong">
+        <AppHeader
+          count={activities.length}
+          isAdmin={isAdmin}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onOpenMenu={() => setSheet({ kind: "menu" })}
+          tab={tab}
+          onTab={setTab}
         />
-      )}
 
-      <TopBar
-        isAdmin={isAdmin}
-        adminName={adminName}
-        isConnected={isConnected}
-        activities={activities}
-        onLogout={handleLogout}
-        searchQuery={searchQuery}
-        onSearchChange={handleGlobalSearch}
-        onNavigate={(tab) => setActiveTab(tab as typeof activeTab)}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-      />
-
-      <QuickSplitWidget
-        open={showQuickSplit}
-        onClose={() => setShowQuickSplit(false)}
-        onAdd={addActivity}
-        existingParticipants={getAllParticipants()}
-      />
-
-      <NavDock
-        activeTab={activeTab}
-        onNavigate={(tab) => setActiveTab(tab as typeof activeTab)}
-        isAdmin={isAdmin}
-        onQuickAdd={() => setShowQuickSplit(true)}
-        activitiesCount={activities.length}
-        pendingCount={pendingCount}
-      />
-
-      {/* Main content — centered floating column */}
-      <main className="min-h-screen pt-20 pb-32">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          {/* Page heading */}
-          <div className="mb-5 sm:mb-7">
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-              {meta.title}
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              {meta.subtitle}
-            </p>
+        {/* Mobile / tablet: một cột, đổi bằng segmented control */}
+        <main className="flex-1 overflow-y-auto lg:hidden">
+          <div className="mx-auto w-full max-w-[560px] border-x border-rule min-h-full">
+            {tab === "so" ? ledgerPane : activityPane}
           </div>
+        </main>
 
-          <div key={activeTab} className="animate-rise">
-            {activeTab === "overview" && (
-              <Overview
-                activities={activities}
-                isAdmin={isAdmin}
-                onNavigate={(tab) => setActiveTab(tab as typeof activeTab)}
-                onQuickAdd={() => setShowQuickSplit(true)}
-              />
-            )}
-
-            {activeTab === "list" && (
-              <>
-                <SearchFilter
-                  activities={activities}
-                  onFilteredResults={setFilteredActivities}
-                  searchTerm={searchQuery}
-                  onSearchTermChange={setSearchQuery}
-                />
-                <ActivityList
-                  activities={filteredActivities}
-                  onUpdate={updateActivity}
-                  onDelete={deleteActivity}
-                  onDeleteAll={deleteAllActivities}
-                  paymentQR={paymentQR}
-                  isAdmin={isAdmin}
-                />
-              </>
-            )}
-
-            {activeTab === "summary" && (
-              <DebtSummary
-                activities={activities}
-                onMarkAllPaid={markAllPaidForPerson}
-                onUpdate={updateActivity}
-                isAdmin={isAdmin}
-              />
-            )}
-
-            {activeTab === "qr" && (
-              <div className="max-w-2xl mx-auto bg-card/70 backdrop-blur rounded-3xl border border-border/60 card-float p-5 sm:p-7">
-                <QRCodeManager
-                  paymentQR={paymentQR}
-                  onUpdate={updatePaymentQR}
-                  isAdmin={isAdmin}
+        {/* Desktop ≥1024px: hai cột cùng lúc, không cần segmented control */}
+        <main className="hidden lg:grid flex-1 min-h-0 grid-cols-[560px_1fr]">
+          <div className="overflow-y-auto border-r border-rule-strong">
+            {ledgerPane}
+            {loaded && !empty && (
+              <div className="px-5 pb-6">
+                <ActionBar
+                  label={action.label}
+                  onClick={action.onClick}
+                  variant={action.variant}
+                  inline
                 />
               </div>
             )}
           </div>
-        </div>
-      </main>
-    </>
+          <div className="overflow-y-auto">{activityPane}</div>
+        </main>
+      </div>
+
+      {/* Thanh dưới = HÀNH ĐỘNG, không phải điều hướng. Ẩn ở desktop. */}
+      <div className="lg:hidden">
+        <ActionBar
+          label={action.label}
+          onClick={action.onClick}
+          variant={action.variant}
+        />
+      </div>
+
+      {/* ---- Lớp phủ: Sheet cho mọi nội dung ---------------------------- */}
+      <PaySheet
+        open={sheet?.kind === "pay"}
+        onClose={() => setSheet(null)}
+        amount={ledger.payTarget}
+        payerName={payerName || "người ứng tiền"}
+        paymentQR={paymentQR}
+      />
+
+      <ActivitySheet
+        activity={sheetActivity}
+        onClose={() => setSheet(null)}
+        onToggle={togglePaid}
+        onDelete={deleteActivity}
+        onOpenPay={() => setSheet({ kind: "pay" })}
+        isAdmin={isAdmin}
+        me={me}
+      />
+
+      <PersonSheet
+        name={sheet?.kind === "person" ? sheet.name : null}
+        activities={activities}
+        onClose={() => setSheet(null)}
+        onOpenActivity={openActivity}
+        onOpenPay={() => setSheet({ kind: "pay" })}
+        onMarkAllPaid={markAllPaidForPerson}
+        me={me}
+        isAdmin={isAdmin}
+        isPayer={sheet?.kind === "person" && sheet.name === payerName}
+      />
+
+      <QuickSplitWidget
+        key={sheet?.kind === "split" ? "split-open" : "split-closed"}
+        open={sheet?.kind === "split"}
+        onClose={() => setSheet(null)}
+        onAdd={addActivity}
+        existingParticipants={roster}
+        payerName={payerName}
+      />
+
+      <PinSheet
+        key={sheet?.kind === "pin" ? "pin-open" : "pin-closed"}
+        open={sheet?.kind === "pin"}
+        onClose={() => setSheet(null)}
+        onSubmit={handleAdminLogin}
+        isFirstTime={!adminConfig}
+        adminName={adminName}
+        onAdminNameChange={setAdminName}
+      />
+
+      <NotebookMenu
+        open={sheet?.kind === "menu"}
+        onClose={() => setSheet(null)}
+        me={me}
+        onClearMe={clearMe}
+        isAdmin={isAdmin}
+        onLogin={() => setSheet({ kind: "pin" })}
+        onLogout={handleLogout}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        activities={activities}
+        paymentQR={paymentQR}
+        onUpdateQR={updatePaymentQR}
+      />
+    </div>
   );
 }
